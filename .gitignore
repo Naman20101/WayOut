@@ -218,3 +218,33 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+# Secrets
+.env
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# Backups
+.backup-*/
+
+# Raw and processed data — regenerate via scripts/
+data/raw/
+data/processed/
+!data/download_manifest.json
+
+# Logs
+server.log
+server-error.log
+
+# OS / editor
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
