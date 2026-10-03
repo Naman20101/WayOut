@@ -1,0 +1,83 @@
+[
+  {
+    "region": "kochi",
+    "mode": "walking",
+    "status": 200,
+    "seconds": 2.6,
+    "shortest_m": 1956.1,
+    "recommended_m": 1956.1,
+    "error": null
+  },
+  {
+    "region": "kochi",
+    "mode": "bicycle",
+    "status": 400,
+    "seconds": 0.26,
+    "shortest_m": null,
+    "recommended_m": null,
+    "error": "No route is available for these points, mode and simulated closures."
+  },
+  {
+    "region": "kochi",
+    "mode": "car",
+    "status": 200,
+    "seconds": 0.24,
+    "shortest_m": 3115.5,
+    "recommended_m": 3115.5,
+    "error": null
+  },
+  {
+    "region": "kathmandu",
+    "mode": "walking",
+    "status": 200,
+    "seconds": 4.29,
+    "shortest_m": 1751.2,
+    "recommended_m": 1751.2,
+    "error": null
+  },
+  {
+    "region": "kathmandu",
+    "mode": "bicycle",
+    "status": 200,
+    "seconds": 0.54,
+    "shortest_m": 1809.7,
+    "recommended_m": 1809.7,
+    "error": null
+  },
+  {
+    "region": "kathmandu",
+    "mode": "car",
+    "status": 200,
+    "seconds": 0.26,
+    "shortest_m": 1819.3,
+    "recommended_m": 1819.3,
+    "error": null
+  },
+  {
+    "region": "tokyo",
+    "mode": "walking",
+    "status": 200,
+    "seconds": 78.41,
+    "shortest_m": 1273.5,
+    "recommended_m": 1276.4,
+    "error": null
+  },
+  {
+    "region": "tokyo",
+    "mode": "bicycle",
+    "status": 200,
+    "seconds": 2.53,
+    "shortest_m": 1275.8,
+    "recommended_m": 1279.2,
+    "error": null
+  },
+  {
+    "region": "tokyo",
+    "mode": "car",
+    "status": 200,
+    "seconds": 0.93,
+    "shortest_m": 1289.1,
+    "recommended_m": 1289.1,
+    "error": null
+  }
+]
