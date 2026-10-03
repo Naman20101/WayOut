@@ -1,0 +1,13 @@
+erDiagram
+  regions ||--o{ road_nodes : contains
+  regions ||--o{ data_sources : documents
+  road_nodes ||--o{ road_edges : connects
+  road_edges ||--o{ risk_scores : has
+  data_sources ||--o{ risk_scores : supports
+  data_sources ||--o{ shelters : designates
+  data_sources ||--o{ hazard_zones : supports
+  data_sources ||--o{ hazard_history : documents
+  regions ||--o{ locations : contains
+  regions ||--o{ route_history : stores
+  regions ||--o{ admin_simulations : scopes
+  buildings ||--o| structural_risk : reserves
