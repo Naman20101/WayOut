@@ -1,11 +1,10 @@
 import sys
 from pathlib import Path
-sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import pytest
-from routing.dijkstra import shortest_path
-from routing.graph_builder import adjacency
-from routing.risk_router import exposure,validate_point
-from app import create_app
+from backend.routing.dijkstra import shortest_path
+from backend.routing.graph_builder import adjacency
+from backend.routing.risk_router import exposure,validate_point
+from backend.app import create_app
 
 def test_dijkstra_cost_and_closure():
     g={1:[(2,{'d':1}),(3,{'d':5})],2:[(3,{'d':1})]}

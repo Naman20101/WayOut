@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="csrf-token" content="{{ csrf }}"><title>Create account · WAYOUT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet">
+<style>
+:root{--green:#0f2a24;--green-2:#16352f;--sand:#d6c7a1;--paper:#f8f7f3;
+  --muted:#6b7a72;--line:rgba(15,42,36,.10);--soft:#eef1ec;
+  --glass-b:rgba(255,255,255,.5)}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:'Inter',sans-serif;background:var(--paper);
+  display:flex;align-items:center;justify-content:center;padding:32px;
+  -webkit-font-smoothing:antialiased;color:var(--green)}
+.card{width:100%;max-width:520px;background:rgba(255,254,251,.9);
+  backdrop-filter:blur(28px);border:1px solid var(--glass-b);
+  border-radius:24px;padding:44px;box-shadow:0 32px 80px rgba(15,42,36,.14)}
+.eyebrow{font-size:10px;letter-spacing:.2em;text-transform:uppercase;
+  font-weight:700;color:var(--muted);margin-bottom:14px;
+  display:flex;align-items:center;gap:8px}
+.eyebrow::before{content:"";width:6px;height:6px;border-radius:50%;
+  background:var(--green);box-shadow:0 0 0 3px rgba(22,53,47,.12)}
+h1{font-family:'Fraunces',serif;font-size:34px;font-weight:500;
+  letter-spacing:-.03em;margin:0 0 8px;line-height:1.1}
+.sub{font-size:13px;color:var(--muted);margin-bottom:32px;line-height:1.55}
+label{display:block;font-size:11px;font-weight:600;margin:16px 0 6px;
+  letter-spacing:.02em}
+input{width:100%;padding:13px 15px;font-size:14px;font-family:inherit;
+  border:1px solid var(--line);border-radius:12px;background:#fff;
+  color:var(--green);transition:border-color .15s,box-shadow .15s}
+input:focus{outline:none;border-color:var(--green);
+  box-shadow:0 0 0 3px rgba(22,53,47,.10)}
+.hint{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5}
+button{width:100%;margin-top:24px;padding:15px;border:none;
+  border-radius:12px;background:linear-gradient(135deg,#16352f,#0f2a24);
+  color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;
+  transition:transform .15s,box-shadow .25s}
+button:hover{transform:translateY(-1px);box-shadow:0 12px 28px rgba(15,42,36,.22)}
+button:disabled{opacity:.55;cursor:not-allowed;transform:none}
+.err{padding:12px 14px;border-radius:10px;
+  background:rgba(196,90,60,.12);border:1px solid rgba(196,90,60,.3);
+  color:#8a2e1a;font-size:12px;margin-top:16px}
+.alt{margin-top:20px;padding-top:20px;border-top:1px solid var(--line);
+  text-align:center;font-size:12px;color:var(--muted)}
+.alt a{color:var(--green);font-weight:600;text-decoration:underline}
+.geo-row{display:flex;gap:8px;margin-top:6px}
+.geo-btn{flex:0 0 auto;padding:13px 14px;border:1px solid var(--line);
+  border-radius:12px;background:var(--soft);color:var(--green);
+  font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+.geo-btn:hover{background:var(--sand)}
+</style></head>
+<body>
+<div class="card">
+  <div class="eyebrow">Create your account</div>
+  <h1>Save your location.</h1>
+  <p class="sub">WAYOUT reads your home area to show the hazards that
+     actually affect you, and routes you to the nearest shelter when you
+     need it. No email. No verification. Just a username.</p>
+
+  {% if error %}<div class="err">{{ error }}</div>{% endif %}
+
+  <form method="post" id="signup-form">
+    <label for="username">Username</label>
+    <input id="username" name="username" required minlength="3"
+           autocomplete="username" placeholder="your_name">
+
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" required minlength="6"
+           autocomplete="new-password" placeholder="at least 6 characters">
+
+    <label for="display_name">Display name <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+    <input id="display_name" name="display_name" placeholder="How should we address you?">
+
+    <label for="home_label">Your area</label>
+    <div class="geo-row">
+      <input id="home_label" name="home_label" placeholder="City, state or region"
+             style="flex:1">
+      <button type="button" class="geo-btn" id="geo">📍 Use current</button>
+    </div>
+    <p class="hint" id="geo-hint">Click "Use current" to read your location,
+       or type your area. Only stored on this server.</p>
+    <input type="hidden" id="home_lat" name="home_lat">
+    <input type="hidden" id="home_lon" name="home_lon">
+
+    <button type="submit" id="submit">Create account</button>
+  </form>
+
+  <p class="alt">Already have an account? <a href="/login">Sign in</a></p>
+</div>
+
+<script>
+const geoBtn=document.getElementById('geo');
+const hint=document.getElementById('geo-hint');
+geoBtn.onclick=()=>{
+  if(!navigator.geolocation){hint.textContent='Geolocation unavailable.';return;}
+  geoBtn.disabled=true;geoBtn.textContent='Locating…';
+  navigator.geolocation.getCurrentPosition(async p=>{
+    const lat=p.coords.latitude,lon=p.coords.longitude;
+    document.getElementById('home_lat').value=lat.toFixed(6);
+    document.getElementById('home_lon').value=lon.toFixed(6);
+    // Try reverse geocoding via Nominatim for a friendly label
+    try{
+      const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10`,
+                          {headers:{'Accept-Language':'en'}});
+      const j=await r.json();
+      const a=j.address||{};
+      const label=[a.city||a.town||a.village||a.county,a.state||a.region,a.country]
+        .filter(Boolean).slice(0,2).join(', ');
+      document.getElementById('home_label').value=label||`${lat.toFixed(3)}, ${lon.toFixed(3)}`;
+      hint.textContent=`Location set: ${document.getElementById('home_label').value}`;
+    }catch(e){
+      document.getElementById('home_label').value=`${lat.toFixed(3)}, ${lon.toFixed(3)}`;
+      hint.textContent='Location set (coordinates).';
+    }
+    geoBtn.disabled=false;geoBtn.textContent='📍 Use current';
+  },()=>{
+    geoBtn.disabled=false;geoBtn.textContent='📍 Use current';
+    hint.textContent='Location permission was denied.';
+  },{enableHighAccuracy:false,timeout:12000});
+};
+</script>
+</body></html>

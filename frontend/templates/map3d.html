@@ -1,0 +1,1020 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="csrf-token" content="{{ csrf }}"><title>WAYOUT · Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<style>
+:root{--green:#0a1f1a;--green-2:#16352f;--sand:#d6c7a1;--sand-2:#c49361;
+--paper:#f8f7f3;--ink:#0a1f1a;--muted:#6b7a72;--line:rgba(10,31,26,.09);
+--soft:#eef1ec;--glass:rgba(255,254,251,.82);--glass-b:rgba(255,255,255,.55);
+--shadow-m:0 8px 24px rgba(10,31,26,.10);--shadow-l:0 24px 64px rgba(10,31,26,.18);
+--radius:20px;--radius-s:12px}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;height:100%;overflow:hidden}
+body{font-family:'Inter',sans-serif;color:var(--ink);background:var(--paper);
+-webkit-font-smoothing:antialiased}
+#map{position:absolute;inset:0;background:#dfe6dc}
+
+/* NAV */
+.nav{position:absolute;top:20px;left:50%;transform:translateX(-50%);z-index:100;
+display:flex;align-items:center;gap:22px;padding:10px 20px;border-radius:34px;
+background:var(--glass);backdrop-filter:blur(24px) saturate(180%);
+border:1px solid var(--glass-b);box-shadow:var(--shadow-m);font-size:13px;
+max-width:calc(100vw - 40px)}
+.nav .brand{display:flex;align-items:center;gap:10px;font-weight:700;
+color:var(--green);letter-spacing:.02em;flex-shrink:0}
+.nav .brand-dot{width:8px;height:8px;border-radius:50%;
+background:radial-gradient(circle at 30% 30%,#2a5347,#0f2a24);
+box-shadow:0 0 0 4px rgba(22,53,47,.14)}
+.nav nav{display:flex;gap:20px}
+.nav nav a{color:var(--muted);text-decoration:none;font-weight:500;
+font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:.05em;
+text-transform:uppercase;position:relative;padding:4px 0}
+.nav nav a:hover,.nav nav a.active{color:var(--green)}
+.nav nav a.active::after{content:"";position:absolute;left:0;right:0;bottom:-4px;
+height:2px;background:var(--green);border-radius:2px}
+
+/* SIDE PANEL */
+.panel{position:absolute;z-index:50;top:100px;left:24px;width:380px;
+background:var(--glass);backdrop-filter:blur(28px) saturate(180%);
+border:1px solid var(--glass-b);border-radius:var(--radius);
+box-shadow:var(--shadow-l);padding:22px;max-height:calc(100vh - 150px);overflow-y:auto}
+.panel::-webkit-scrollbar{width:5px}
+.panel::-webkit-scrollbar-thumb{background:rgba(15,42,36,.2);border-radius:3px}
+.eyebrow{font-size:10px;letter-spacing:.18em;text-transform:uppercase;
+font-weight:700;color:var(--muted);display:flex;align-items:center;gap:8px;
+font-family:'JetBrains Mono',monospace}
+.eyebrow::before{content:"";width:6px;height:6px;border-radius:50%;
+background:var(--green);box-shadow:0 0 0 3px rgba(22,53,47,.12)}
+.panel h1{font-size:20px;margin:12px 0 4px;font-weight:600;color:var(--green);
+letter-spacing:-.02em;line-height:1.15}
+.panel .sub{font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.5}
+label{display:block;font-size:11px;font-weight:600;color:var(--green);margin:12px 0 5px}
+select,input:not([type=checkbox]){width:100%;padding:11px 13px;font-size:13px;
+border:1px solid var(--line);border-radius:var(--radius-s);
+background:rgba(255,255,255,.85);color:var(--green);font-family:inherit}
+select:focus,input:focus{outline:none;border-color:var(--green);background:#fff;
+box-shadow:0 0 0 3px rgba(22,53,47,.10)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* THREE-BUTTON FLOW */
+.flow-steps{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.step{display:flex;align-items:center;gap:12px;padding:12px 14px;
+border:1px solid var(--line);border-radius:var(--radius-s);
+background:rgba(255,255,255,.5);cursor:pointer;transition:all .15s;
+text-align:left;width:100%}
+.step:hover{border-color:var(--green);background:#fff;
+transform:translateX(2px)}
+.step.active{border-color:var(--green);
+background:linear-gradient(135deg,rgba(232,238,229,.9),rgba(238,244,233,.85));
+box-shadow:0 4px 12px rgba(22,53,47,.08)}
+.step .step-num{width:26px;height:26px;border-radius:50%;
+background:var(--soft);display:flex;align-items:center;justify-content:center;
+font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;
+color:var(--green);flex-shrink:0}
+.step.active .step-num{background:var(--green);color:#fff}
+.step.done .step-num{background:var(--green);color:#fff}
+.step .step-body{flex:1;min-width:0}
+.step .step-title{font-size:12.5px;font-weight:600;color:var(--green);
+line-height:1.2;margin-bottom:2px}
+.step .step-hint{font-size:10.5px;color:var(--muted);
+font-family:'JetBrains Mono',monospace;white-space:nowrap;
+overflow:hidden;text-overflow:ellipsis}
+.step .step-icon{font-size:14px;color:var(--muted);flex-shrink:0;
+font-family:'JetBrains Mono',monospace;font-weight:600}
+.step.active .step-icon{color:var(--green)}
+
+button.primary{width:100%;margin-top:14px;padding:15px 20px;
+background:linear-gradient(135deg,var(--green-2),var(--green));color:#fff;border:none;
+border-radius:var(--radius-s);font-size:13px;font-weight:600;cursor:pointer;
+display:flex;justify-content:space-between;align-items:center;
+transition:transform .15s,box-shadow .2s}
+button.primary:hover:not(:disabled){transform:translateY(-1px);
+box-shadow:0 12px 28px rgba(15,42,36,.22)}
+button.primary:disabled{opacity:.4;cursor:not-allowed;transform:none;
+background:linear-gradient(135deg,#6b7a72,#4a5a52)}
+button.ghost{width:100%;margin-top:8px;padding:11px;background:rgba(255,255,255,.6);
+color:var(--green);border:1px solid var(--line);border-radius:var(--radius-s);
+font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;
+justify-content:center;gap:8px}
+button.ghost:hover{background:var(--soft);border-color:var(--green)}
+#status{font-size:11px;line-height:1.5;margin-top:12px;padding:11px 13px;
+border-radius:var(--radius-s);
+background:linear-gradient(135deg,rgba(214,199,161,.16),rgba(214,199,161,.10));
+border:1px solid rgba(214,199,161,.35);color:#7a5a34}
+#status:empty{display:none}
+#status.error{background:rgba(196,58,26,.10);border-color:rgba(196,58,26,.3);color:#7a1e0d}
+
+/* SAFE SPOTS */
+.safe{margin-top:14px;border-top:1px solid var(--line);padding-top:14px}
+.safe[hidden]{display:none}
+.safe-head{display:flex;justify-content:space-between;margin-bottom:10px}
+.safe-head h3{font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+color:var(--muted);font-weight:700;margin:0;font-family:'JetBrains Mono',monospace}
+.safe-head span{font-size:10px;color:var(--muted)}
+.safe-list{display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto}
+.safe-item{display:flex;align-items:center;gap:10px;padding:10px 12px;
+border:1px solid var(--line);border-radius:var(--radius-s);
+background:rgba(255,255,255,.55);cursor:pointer;transition:all .15s}
+.safe-item:hover{transform:translateX(3px);border-color:var(--green);background:rgba(255,255,255,.9)}
+.safe-item.selected{border-color:var(--green);
+background:linear-gradient(135deg,rgba(232,238,229,.9),rgba(238,244,233,.85))}
+.safe-icon{width:28px;height:28px;border-radius:50%;
+background:linear-gradient(135deg,#1b3d34,#0f2a24);display:flex;
+align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;flex-shrink:0}
+.safe-item.unverified .safe-icon{background:linear-gradient(135deg,#c49361,#a67a4a)}
+.safe-body{flex:1;min-width:0}
+.safe-name{font-size:12px;font-weight:600;color:var(--green);
+white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.safe-meta{font-size:10px;color:var(--muted);margin-top:2px}
+.safe-dist{font-size:11px;font-weight:600;color:var(--green);flex-shrink:0}
+.safe-empty{padding:14px;font-size:11px;color:var(--muted);text-align:center;
+line-height:1.5}
+
+/* RESULTS */
+.result{position:absolute;z-index:60;right:24px;top:100px;width:360px;
+background:var(--glass);backdrop-filter:blur(28px) saturate(180%);
+border:1px solid var(--glass-b);border-radius:var(--radius);
+box-shadow:var(--shadow-l);padding:22px;
+animation:resultIn .4s cubic-bezier(.2,.9,.3,1)}
+@keyframes resultIn{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}}
+.result[hidden]{display:none}
+.result h2{font-size:17px;margin:0 0 4px;font-weight:600;color:var(--green);letter-spacing:-.02em}
+.result .fine{font-size:10px;color:var(--muted);margin-bottom:14px;line-height:1.5}
+.result .badge{display:inline-block;background:rgba(214,199,161,.28);color:#7a5a34;
+font-size:9px;letter-spacing:.12em;padding:4px 10px;border-radius:12px;
+font-weight:700;margin-bottom:10px;font-family:'JetBrains Mono',monospace}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.card{border:1px solid var(--line);border-radius:14px;padding:13px;background:rgba(255,255,255,.55)}
+.card.rec{border-color:rgba(142,161,142,.4);
+background:linear-gradient(135deg,rgba(232,238,229,.9),rgba(238,244,233,.85))}
+.card .lbl{font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+font-weight:700;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.card .val{font-size:24px;font-weight:500;color:var(--green);
+letter-spacing:-.03em;margin:6px 0 3px;line-height:1;display:flex;align-items:baseline;gap:4px}
+.card .val small{font-size:10px;color:var(--muted);font-weight:400}
+.card p{font-size:10px;color:var(--muted);margin:2px 0;line-height:1.4}
+.reasons{list-style:none;padding:12px 0 0;margin:12px 0 0;border-top:1px solid var(--line);
+font-size:11px;color:#5c6a61;line-height:1.5}
+.reasons li{margin:5px 0;padding-left:12px;position:relative}
+.reasons li::before{content:"";position:absolute;left:0;top:7px;width:4px;height:4px;
+border-radius:50%;background:var(--green)}
+.close{position:absolute;top:12px;right:12px;background:none;border:none;
+font-size:20px;color:var(--muted);cursor:pointer;width:28px;height:28px;
+border-radius:50%;display:flex;align-items:center;justify-content:center}
+.close:hover{background:var(--soft);color:var(--green)}
+
+/* SEARCH MODAL */
+.search-modal{position:absolute;z-index:200;inset:0;background:rgba(10,31,26,.5);
+backdrop-filter:blur(6px);display:flex;align-items:flex-start;
+justify-content:center;padding-top:120px}
+.search-modal[hidden]{display:none}
+.search-modal .sm-card{background:#fff;border-radius:18px;width:min(560px,calc(100vw - 40px));
+box-shadow:0 32px 80px rgba(0,0,0,.35);overflow:hidden}
+.sm-head{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;
+align-items:center;justify-content:space-between}
+.sm-head h3{font-size:15px;font-weight:600;color:var(--green);margin:0;letter-spacing:-.02em}
+.sm-head .sm-close{background:none;border:none;color:var(--muted);font-size:22px;
+cursor:pointer;padding:4px 8px;border-radius:6px;line-height:1}
+.sm-head .sm-close:hover{background:var(--soft);color:var(--green)}
+.sm-input-wrap{padding:16px 22px;border-bottom:1px solid var(--line);position:relative}
+.sm-input-wrap input{width:100%;padding:13px 14px 13px 40px;font-size:14px;
+border:1px solid var(--line);border-radius:10px;background:#f5f6f1;
+color:var(--green);font-family:inherit}
+.sm-input-wrap input:focus{outline:none;border-color:var(--green);background:#fff;
+box-shadow:0 0 0 3px rgba(22,53,47,.08)}
+.sm-input-wrap .sm-icon{position:absolute;left:34px;top:50%;transform:translateY(-50%);
+font-size:14px;color:var(--muted);pointer-events:none}
+.sm-results{max-height:400px;overflow-y:auto}
+.sm-results button{display:block;width:100%;text-align:left;padding:14px 22px;
+border-bottom:1px solid var(--line);background:#fff;cursor:pointer;
+transition:background .12s;font-size:13px;color:var(--green)}
+.sm-results button:hover{background:#f5f6f1}
+.sm-results button:last-child{border-bottom:none}
+.sm-results .sm-name{font-weight:600;margin-bottom:2px}
+.sm-results .sm-meta{font-size:10.5px;color:var(--muted);
+font-family:'JetBrains Mono',monospace}
+.sm-results .sm-empty{padding:26px 22px;text-align:center;font-size:12px;color:var(--muted)}
+
+/* CHAT */
+.chat{position:absolute;z-index:65;bottom:24px;left:24px;width:380px;height:480px;
+background:rgba(10,31,26,.94);backdrop-filter:blur(28px) saturate(180%);
+border:1px solid rgba(232,217,179,.16);border-radius:var(--radius);
+box-shadow:var(--shadow-l);display:flex;flex-direction:column;overflow:hidden;
+transition:height .3s ease;color:#fff}
+.chat.collapsed{height:56px}
+.chat.dragging{transition:none;cursor:grabbing}
+.chat-head{padding:14px 18px;display:flex;align-items:center;gap:12px;
+border-bottom:1px solid rgba(232,217,179,.1);cursor:grab;flex-shrink:0;user-select:none}
+.chat-head:active{cursor:grabbing}
+.chat-head .icon{width:32px;height:32px;border-radius:10px;
+background:linear-gradient(135deg,#1b3d34,#0f2a24);display:flex;
+align-items:center;justify-content:center;color:var(--sand);font-size:14px;
+font-weight:700;flex-shrink:0;border:1px solid rgba(232,217,179,.16)}
+.chat-head .meta{flex:1;min-width:0}
+.chat-head .title{font-size:13px;font-weight:600;color:#fff}
+.chat-head .status{font-family:'JetBrains Mono',monospace;font-size:10px;
+color:rgba(232,217,179,.55);margin-top:1px}
+.chat-head .chev{color:rgba(232,217,179,.5);font-size:16px;transition:transform .2s;flex-shrink:0}
+.chat.collapsed .chat-head .chev{transform:rotate(180deg)}
+.chat-body{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+.chat-body::-webkit-scrollbar{width:5px}
+.chat-body::-webkit-scrollbar-thumb{background:rgba(232,217,179,.2);border-radius:3px}
+.msg{max-width:86%;padding:10px 13px;border-radius:14px;font-size:12.5px;
+line-height:1.55;animation:msgIn .25s ease-out;white-space:pre-wrap;word-wrap:break-word}
+@keyframes msgIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.msg.user{align-self:flex-end;background:var(--sand);color:var(--green);border-bottom-right-radius:4px}
+.msg.bot{align-self:flex-start;background:rgba(255,255,255,.08);
+color:rgba(255,255,255,.9);border:1px solid rgba(232,217,179,.1);border-bottom-left-radius:4px}
+.msg.bot em{font-style:italic;color:rgba(232,217,179,.6)}
+.msg.bot.error{background:rgba(196,90,60,.2);border-color:rgba(196,90,60,.35);color:#ffb8a0}
+.msg.bot.thinking::after{content:"▊";animation:blink 1s step-start infinite;color:var(--sand)}
+@keyframes blink{50%{opacity:0}}
+.chat-prompts{padding:10px 12px 0;display:flex;flex-wrap:wrap;gap:6px;
+border-top:1px solid rgba(232,217,179,.1)}
+.chat-prompts button{padding:6px 11px;border-radius:14px;background:rgba(232,217,179,.08);
+color:var(--sand);font-size:10.5px;font-weight:600;border:1px solid rgba(232,217,179,.1);cursor:pointer}
+.chat-prompts button:hover{background:rgba(232,217,179,.16)}
+.chat-input{display:flex;gap:6px;padding:10px 12px 12px}
+.chat-input input{flex:1;padding:10px 12px;font-size:12px;border-radius:10px;
+border:1px solid rgba(232,217,179,.14);background:rgba(255,255,255,.05);
+color:#fff;font-family:inherit}
+.chat-input input::placeholder{color:rgba(232,217,179,.35)}
+.chat-input input:focus{outline:none;border-color:var(--sand)}
+.chat-input button{padding:10px 14px;border-radius:10px;background:var(--sand);
+color:var(--green);font-size:12px;font-weight:600;cursor:pointer}
+.chat-input button:disabled{opacity:.4;cursor:not-allowed}
+
+.busy{position:absolute;z-index:80;top:20px;left:50%;transform:translateX(-50%);
+background:var(--glass);backdrop-filter:blur(20px);border:1px solid var(--glass-b);
+border-radius:24px;padding:10px 20px;display:flex;gap:12px;align-items:center;
+box-shadow:var(--shadow-l);font-size:12px;font-weight:500;color:var(--green);
+display:none}
+.busy[hidden]{display:none}
+.busy.on{display:flex}
+.spinner{width:14px;height:14px;border:2px solid rgba(22,53,47,.15);
+border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.pill{position:absolute;z-index:50;bottom:24px;right:80px;display:flex;gap:12px;
+align-items:center;background:var(--glass);backdrop-filter:blur(20px);
+border:1px solid var(--glass-b);padding:10px 18px;border-radius:24px;
+box-shadow:var(--shadow-m);font-size:11px;font-weight:500;color:var(--green);
+font-family:'JetBrains Mono',monospace}
+.pill .dot{width:6px;height:6px;border-radius:50%;
+background:linear-gradient(135deg,#16352f,#0f2a24);
+box-shadow:0 0 0 3px rgba(22,53,47,.14)}
+
+.controls{position:absolute;z-index:50;bottom:24px;right:24px;
+display:flex;flex-direction:column;gap:8px}
+.ctrl{width:44px;height:44px;border-radius:50%;background:var(--glass);
+backdrop-filter:blur(20px);border:1px solid var(--glass-b);box-shadow:var(--shadow-m);
+font-size:15px;color:var(--green);cursor:pointer;display:flex;
+align-items:center;justify-content:center;font-weight:600;
+transition:transform .18s,background .18s}
+.ctrl:hover{transform:scale(1.08);background:rgba(255,255,255,.92)}
+.ctrl.active{background:var(--green);color:#fff;border-color:var(--green)}
+
+.wyo-pin{position:relative;width:40px;height:52px}
+.wyo-pin .head{position:absolute;top:0;left:50%;transform:translateX(-50%);
+width:34px;height:34px;border-radius:50%;display:flex;align-items:center;
+justify-content:center;font-size:14px;font-weight:700;color:#fff;border:2.5px solid #fff}
+.wyo-pin .tail{position:absolute;top:30px;left:50%;transform:translateX(-50%);
+width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent}
+.wyo-pin .shadow{position:absolute;bottom:0;left:50%;transform:translateX(-50%);
+width:24px;height:6px;border-radius:50%;background:rgba(15,42,36,.28);filter:blur(3px)}
+.wyo-pin-a .head{background:linear-gradient(135deg,#1b3d34,#0f2a24);
+box-shadow:0 8px 20px rgba(15,42,36,.4)}
+.wyo-pin-a .tail{border-top:16px solid #16352f}
+.wyo-pin-b .head{background:linear-gradient(135deg,#c49361,#a67a4a);
+box-shadow:0 8px 20px rgba(166,122,74,.45)}
+.wyo-pin-b .tail{border-top:16px solid #a67a4a}
+
+@media(max-width:1000px){
+.nav{gap:14px;padding:9px 14px}.nav nav{display:none}
+.panel{position:static;width:auto;margin:100px 12px 12px;max-height:none}
+.result{position:static;width:auto;margin:12px}
+.chat{position:static;width:auto;height:auto;margin:12px}
+.chat.collapsed{height:auto}.chat-body{max-height:300px}
+}
+</style></head>
+<body>
+
+<div id="map"></div>
+
+<header class="nav">
+  <a href="/" class="brand"><span class="brand-dot"></span>WAYOUT</a>
+  <nav>
+    <a href="/map" class="active">Map</a>
+    <a href="/dashboard">Overview</a>
+    <a href="/shelters">Destinations</a>
+    <a href="/methodology">Methodology</a>
+  </nav>
+</header>
+
+<div class="search-modal" id="search-modal" hidden>
+  <div class="sm-card">
+    <div class="sm-head">
+      <h3>Search any place on Earth</h3>
+      <button class="sm-close" id="sm-close" aria-label="Close">✕</button>
+    </div>
+    <div class="sm-input-wrap">
+      <span class="sm-icon">⌕</span>
+      <input id="sm-input" placeholder="Type a city, region or landmark…" autocomplete="off">
+    </div>
+    <div class="sm-results" id="sm-results">
+      <div class="sm-empty">Start typing to search.</div>
+    </div>
+  </div>
+</div>
+
+<aside class="panel">
+  <div class="eyebrow">Route planner</div>
+  <h1>Find your way out.</h1>
+  <p class="sub">Pick start, pick destination, compare.</p>
+
+  <label for="region">Region</label>
+  <select id="region">
+    {% for key,r in regions.items() %}<option value="{{key}}">{{r.name}}</option>{% endfor %}
+  </select>
+
+  <div class="row" style="margin-top:12px">
+    <div><label for="hazard">Hazard</label>
+      <select id="hazard">
+        <option value="flood">Flood</option>
+        <option value="earthquake">Earthquake</option>
+      </select>
+    </div>
+    <div><label for="mode">Travel</label>
+      <select id="mode">
+        <option value="walking">Walk</option>
+        <option value="bicycle">Bike</option>
+        <option value="car">Car</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="flow-steps" style="margin-top:14px">
+    <button class="step active" id="step-a" data-step="a">
+      <span class="step-num">A</span>
+      <span class="step-body">
+        <span class="step-title">Pick starting point</span>
+        <span class="step-hint" id="step-a-hint">Click the map to place A</span>
+      </span>
+      <span class="step-icon" id="step-a-status">◯</span>
+    </button>
+
+    <button class="step" id="step-b" data-step="b" disabled>
+      <span class="step-num">B</span>
+      <span class="step-body">
+        <span class="step-title">Pick destination</span>
+        <span class="step-hint" id="step-b-hint">Waiting for A…</span>
+      </span>
+      <span class="step-icon" id="step-b-status">◯</span>
+    </button>
+
+    <button class="step" id="step-c" data-step="c" disabled>
+      <span class="step-num">C</span>
+      <span class="step-body">
+        <span class="step-title">Compare routes</span>
+        <span class="step-hint" id="step-c-hint">Place A and B first</span>
+      </span>
+      <span class="step-icon" id="step-c-status">◯</span>
+    </button>
+  </div>
+
+  <button class="primary" id="calculate" disabled>Compare routes <span>↗</span></button>
+
+  <button class="ghost" id="btn-use-location" style="margin-top:8px">
+    📍 Use my current location as A
+  </button>
+  <button class="ghost" id="btn-search-area">
+    ⌕ Search any area as A
+  </button>
+
+  <div id="status"></div>
+
+  <section class="safe" id="safe-section" hidden>
+    <div class="safe-head">
+      <h3>Nearby destinations</h3>
+      <span id="safe-count"></span>
+    </div>
+    <div class="safe-list" id="safe-list"></div>
+  </section>
+</aside>
+
+<aside class="result" id="results" hidden>
+  <button class="close" id="close-results" aria-label="Close">×</button>
+  <span class="badge" id="result-badge">SIMULATION</span>
+  <h2>Route to <span id="dest-name">—</span></h2>
+  <p class="fine">Not a guarantee of safety. Follow official guidance.</p>
+  <div class="cards" id="cards"></div>
+  <ul class="reasons" id="reasons"></ul>
+</aside>
+
+<aside class="chat" id="chat">
+  <div class="chat-head" id="chat-head">
+    <div class="icon">✦</div>
+    <div class="meta">
+      <div class="title">Survival assistant</div>
+      <div class="status" id="chat-status">Checking local model…</div>
+    </div>
+    <span class="chev" id="chat-chev">⌄</span>
+  </div>
+  <div class="chat-body" id="chat-body">
+    <div class="msg bot">Ask me about first aid, shelter, water, or how to stay safe during an earthquake, flood or storm. <em>If you are in immediate danger, call emergency services.</em></div>
+  </div>
+  <div class="chat-prompts" id="chat-prompts">
+    <button data-q="I'm trapped under debris. What do I do?">Trapped</button>
+    <button data-q="How do I purify water without a filter?">Water</button>
+    <button data-q="Someone is bleeding heavily. First aid steps?">Bleeding</button>
+    <button data-q="How do I stay warm without power?">Stay warm</button>
+  </div>
+  <div class="chat-input">
+    <input id="chat-q" placeholder="Ask anything…" autocomplete="off">
+    <button id="chat-send">Send</button>
+  </div>
+</aside>
+
+<div class="busy" id="busy"><span class="spinner"></span><span id="busy-text">Working…</span></div>
+<div class="pill"><span class="dot"></span><span id="pill">Loading…</span></div>
+
+<div class="controls">
+  <button class="ctrl active" id="tilt" title="3D / 2D">3D</button>
+  <button class="ctrl" id="rotate" title="Rotate">↻</button>
+  <button class="ctrl" id="recenter" title="Recenter">⌖</button>
+</div>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>window.WAYOUT_REGIONS={{regions|tojson}};</script>
+<script>
+const $=id=>document.getElementById(id);
+const CSRF=document.querySelector('meta[name="csrf-token"]').content;
+const REGIONS=window.WAYOUT_REGIONS;
+const points={origin:null,destination:null};
+const markers={origin:null,destination:null};
+let safeSpots=[];
+let activeStep='a';
+
+const map=new maplibregl.Map({
+  container:'map',
+  style:'https://tiles.openfreemap.org/styles/liberty',
+  center:[10.0614,10.0614],zoom:12,pitch:60,bearing:-22,maxPitch:85,
+  antialias:true,attributionControl:false
+});
+map.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-left');
+map.addControl(new maplibregl.ScaleControl({maxWidth:80,unit:'metric'}),'bottom-left');
+
+map.on('load',()=>{
+  map.addSource('terrain',{
+    type:'raster-dem',
+    tiles:['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+    encoding:'terrarium',tileSize:256,maxzoom:15
+  });
+  map.setTerrain({source:'terrain',exaggeration:1.5});
+  map.addLayer({id:'hillshade',type:'hillshade',source:'terrain',
+    paint:{'hillshade-shadow-color':'#1c2e26','hillshade-highlight-color':'#f5f0df',
+      'hillshade-accent-color':'#7d9280','hillshade-exaggeration':0.55}});
+  map.addLayer({id:'sky',type:'sky',
+    paint:{'sky-type':'atmosphere','sky-atmosphere-sun':[0.0,90.0],
+      'sky-atmosphere-sun-intensity':18}});
+
+  map.addSource('route-shortest',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
+  map.addSource('route-recommended',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
+  map.addSource('route-halo',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
+  map.addLayer({id:'route-halo',type:'line',source:'route-halo',
+    layout:{'line-cap':'round','line-join':'round'},
+    paint:{'line-color':'#c9ddc2','line-width':16,'line-opacity':0.35,'line-blur':6}});
+  map.addLayer({id:'route-shortest-line',type:'line',source:'route-shortest',
+    layout:{'line-cap':'round','line-join':'round'},
+    paint:{'line-color':'#a48e60','line-width':5,'line-opacity':0.85,'line-dasharray':[2,1.5]}});
+  map.addLayer({id:'route-rec-line',type:'line',source:'route-recommended',
+    layout:{'line-cap':'round','line-join':'round'},
+    paint:{'line-color':'#0f2a24','line-width':6,'line-opacity':1}});
+  setPill();
+  updateSteps();
+});
+
+/* ============ MAP CLICK — the ONLY way to place points ============ */
+map.on('click', e => {
+  const { lng, lat } = e.lngLat;
+  if (activeStep === 'a') {
+    placePoint('origin', [lat, lng]);
+    activeStep = 'b';
+    updateSteps();
+    loadSafeSpots(lat, lng);
+  } else if (activeStep === 'b') {
+    placePoint('destination', [lat, lng]);
+    activeStep = 'c';
+    updateSteps();
+  }
+  /* Step C has no map action — user clicks Compare */
+});
+
+function placePoint(which, coords){
+  points[which] = coords;
+  if(markers[which]) markers[which].remove();
+  const el = document.createElement('div');
+  el.className = `wyo-pin wyo-pin-${which === 'origin' ? 'a' : 'b'}`;
+  el.innerHTML = `<div class="shadow"></div><div class="head">${which === 'origin' ? 'A' : 'B'}</div><div class="tail"></div>`;
+  markers[which] = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+    .setLngLat([coords[1], coords[0]]).addTo(map);
+}
+
+function clearPoints(){
+  for(const k of ['origin','destination']){
+    if(markers[k]){ markers[k].remove(); markers[k] = null; }
+    points[k] = null;
+  }
+  activeStep = 'a';
+  updateSteps();
+}
+
+/* ============ STEP UI ============ */
+function updateSteps(){
+  const hasA = !!points.origin;
+  const hasB = !!points.destination;
+
+  $('step-a').classList.toggle('active', activeStep === 'a');
+  $('step-b').classList.toggle('active', activeStep === 'b');
+  $('step-c').classList.toggle('active', activeStep === 'c');
+
+  $('step-a').classList.toggle('done', hasA && activeStep !== 'a');
+  $('step-b').classList.toggle('done', hasB && activeStep !== 'b');
+  $('step-c').classList.toggle('done', false);
+
+  $('step-a-status').textContent = hasA ? '✓' : (activeStep === 'a' ? '◉' : '◯');
+  $('step-b-status').textContent = hasB ? '✓' : (activeStep === 'b' ? '◉' : '◯');
+  $('step-c-status').textContent = (hasA && hasB) ? '→' : '◯';
+
+  $('step-a-hint').textContent = hasA
+    ? `${points.origin[0].toFixed(4)}, ${points.origin[1].toFixed(4)}`
+    : 'Click the map to place A';
+
+  $('step-b-hint').textContent = hasB
+    ? `${points.destination[0].toFixed(4)}, ${points.destination[1].toFixed(4)}`
+    : (hasA ? 'Click the map to place B' : 'Waiting for A…');
+
+  $('step-c-hint').textContent = (hasA && hasB)
+    ? 'Both points set — press Compare'
+    : 'Place A and B first';
+
+  $('step-b').disabled = !hasA;
+  $('step-c').disabled = !(hasA && hasB);
+  $('calculate').disabled = !(hasA && hasB);
+}
+
+/* Clicking a step lets you redo that step */
+$('step-a').onclick = () => { activeStep = 'a'; updateSteps(); };
+$('step-b').onclick = () => { if(points.origin){ activeStep = 'b'; updateSteps(); } };
+$('step-c').onclick = () => { if(points.origin && points.destination) calculateRoute(); };
+
+/* ============ PANEL HEADER HELPERS ============ */
+function setPill(){
+  const c = REGIONS[$('region').value];
+  $('pill').textContent = c ? `${c.name} · ${((c.radius_m || 15000)/1000).toFixed(0)} km` : '—';
+}
+function showStatus(t, isError){
+  const el = $('status');
+  el.textContent = t || '';
+  el.classList.toggle('error', !!isError);
+}
+function showBusy(t){ $('busy-text').textContent = t; $('busy').classList.add('on'); }
+function hideBusy(){ $('busy').classList.remove('on'); }
+
+function setRegionSelection(regionId){
+  const sel = $('region');
+  if(![...sel.options].some(o => o.value === regionId)){
+    const info = REGIONS[regionId];
+    const opt = document.createElement('option');
+    opt.value = regionId;
+    opt.textContent = info ? info.name : regionId;
+    sel.appendChild(opt);
+  }
+  sel.value = regionId;
+}
+
+function isInsideRegion(lat, lon, regionId){
+  const cfg = REGIONS[regionId];
+  if(!cfg) return false;
+  const dlat = (lat - cfg.lat) * 111320;
+  const dlon = (lon - cfg.lon) * 111320 * Math.cos(lat * Math.PI / 180);
+  return Math.hypot(dlat, dlon) <= (cfg.radius_m || 15000);
+}
+
+/* ============ USE MY LOCATION ============ */
+$('btn-use-location').onclick = () => {
+  if(!navigator.geolocation){ showStatus('Geolocation unavailable.', true); return; }
+  $('btn-use-location').disabled = true;
+  $('btn-use-location').textContent = '📍 Locating…';
+  navigator.geolocation.getCurrentPosition(
+    p => {
+      const lat = p.coords.latitude, lon = p.coords.longitude;
+      placePoint('origin', [lat, lon]);
+      map.flyTo({ center:[lon, lat], zoom:14, pitch:60, bearing:-22,
+                  duration:1800, essential:true });
+      activeStep = 'b';
+      updateSteps();
+      loadSafeSpots(lat, lon);
+      $('btn-use-location').disabled = false;
+      $('btn-use-location').textContent = '📍 Use my current location as A';
+    },
+    err => {
+      const msg = err.code === 1 ? 'Permission denied.'
+                : err.code === 2 ? 'Position unavailable.'
+                : 'Request timed out.';
+      showStatus(msg, true);
+      $('btn-use-location').disabled = false;
+      $('btn-use-location').textContent = '📍 Use my current location as A';
+    },
+    { enableHighAccuracy:false, timeout:12000, maximumAge:60000 }
+  );
+};
+
+/* ============ SEARCH MODAL ============ */
+const searchModal = $('search-modal');
+const smInput = $('sm-input');
+const smResults = $('sm-results');
+let smTimer = null;
+
+$('btn-search-area').onclick = () => {
+  searchModal.hidden = false;
+  setTimeout(() => smInput.focus(), 100);
+};
+$('sm-close').onclick = () => { searchModal.hidden = true; };
+searchModal.onclick = e => { if(e.target === searchModal) searchModal.hidden = true; };
+
+smInput.oninput = () => {
+  clearTimeout(smTimer);
+  const q = smInput.value.trim();
+  if(q.length < 3){
+    smResults.innerHTML = '<div class="sm-empty">Type at least 3 characters.</div>';
+    return;
+  }
+  smTimer = setTimeout(async () => {
+    try{
+      const r = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&limit=8&addressdetails=1&q=${encodeURIComponent(q)}`,
+        { headers:{ 'Accept-Language':'en' } });
+      const rows = await r.json();
+      smResults.innerHTML = '';
+      if(!rows.length){
+        smResults.innerHTML = '<div class="sm-empty">No matches found.</div>';
+        return;
+      }
+      rows.forEach(row => {
+        const b = document.createElement('button');
+        const shortName = row.display_name.split(',')[0];
+        const rest = row.display_name.split(',').slice(1,3).join(',');
+        b.innerHTML = `<div class="sm-name">${esc(shortName)}</div>` +
+                      `<div class="sm-meta">${esc(rest)} · ${Number(row.lat).toFixed(3)}, ${Number(row.lon).toFixed(3)}</div>`;
+        b.onclick = () => {
+          searchModal.hidden = true;
+          smInput.value = '';
+          handleSearchSelection(Number(row.lat), Number(row.lon));
+        };
+        smResults.appendChild(b);
+      });
+    }catch(e){
+      smResults.innerHTML = '<div class="sm-empty">Search unavailable right now.</div>';
+    }
+  }, 350);
+};
+
+async function handleSearchSelection(lat, lon){
+  placePoint('origin', [lat, lon]);
+  map.flyTo({ center:[lon, lat], zoom:12, pitch:60, bearing:-22, duration:2000, essential:true });
+  activeStep = 'b';
+  updateSteps();
+  await loadSafeSpots(lat, lon);
+}
+
+/* ============ SAFE SPOTS ============ */
+async function loadSafeSpots(lat, lon){
+  const r = $('region').value;
+  try{
+    const res = await fetch(`/api/safe_nearby?region=${r}&lat=${lat}&lon=${lon}&limit=8`);
+    const d = await res.json();
+    if(!res.ok) throw Error(d.error || 'Lookup failed.');
+    safeSpots = d.spots || [];
+    renderSafeSpots();
+    if(safeSpots.length){
+      showStatus(`Found ${safeSpots.length} destination${safeSpots.length > 1 ? 's' : ''} nearby. Tap one to set B.`);
+    } else {
+      showStatus('No source-backed destinations in this region yet.', true);
+    }
+  }catch(e){
+    safeSpots = [];
+    renderSafeSpots();
+    showStatus('Safe-spot lookup failed: ' + e.message, true);
+  }
+}
+
+function renderSafeSpots(){
+  const section = $('safe-section');
+  if(!safeSpots.length){
+    section.hidden = true;
+    return;
+  }
+  section.hidden = false;
+  $('safe-count').textContent = `${safeSpots.length} found`;
+  $('safe-list').innerHTML = safeSpots.map((s, i) => {
+    const km = (s.distance_m / 1000).toFixed(2);
+    const cls = s.verified ? '' : 'unverified';
+    const icon = s.verified ? '✓' : '•';
+    return `<div class="safe-item ${cls}" data-idx="${i}">
+      <div class="safe-icon">${icon}</div>
+      <div class="safe-body">
+        <div class="safe-name">${esc(s.name)}</div>
+        <div class="safe-meta">${esc(s.kind || 'shelter')}</div>
+      </div>
+      <div class="safe-dist">${km} km</div>
+    </div>`;
+  }).join('');
+  document.querySelectorAll('.safe-item').forEach(el => {
+    el.onclick = () => selectSafeSpot(Number(el.dataset.idx));
+  });
+}
+
+function selectSafeSpot(idx){
+  const s = safeSpots[idx];
+  if(!s) return;
+  document.querySelectorAll('.safe-item').forEach(x => x.classList.remove('selected'));
+  const el = document.querySelector(`.safe-item[data-idx="${idx}"]`);
+  if(el) el.classList.add('selected');
+  placePoint('destination', [s.latitude, s.longitude]);
+  map.flyTo({ center:[s.longitude, s.latitude], zoom:15, pitch:60, bearing:-22,
+              duration:1400, essential:true });
+  activeStep = 'c';
+  updateSteps();
+}
+
+/* ============ COMPARE ============ */
+$('calculate').onclick = calculateRoute;
+
+async function calculateRoute(){
+  if(!points.origin || !points.destination){
+    showStatus('Place both points first.', true);
+    return;
+  }
+  showBusy('Searching the road graph…');
+  showStatus('');
+  clearRoutes();
+  try{
+    const body = {
+      region: $('region').value,
+      origin: points.origin,
+      destination: points.destination,
+      shelter_id: null,
+      simulation_destination: true,
+      mode: $('mode').value,
+      hazard: $('hazard').value
+    };
+    const r = await fetch('/api/route', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'X-CSRF-Token': CSRF },
+      body: JSON.stringify(body)
+    });
+    const d = await r.json();
+    if(!r.ok) throw Error(d.error || 'Route failed.');
+    drawRoutes(d);
+    showResults(d);
+  }catch(e){
+    showStatus(e.message, true);
+  }finally{
+    hideBusy();
+  }
+}
+
+function drawRoutes(d){
+  const line = coords => ({
+    type: 'Feature',
+    geometry: { type: 'LineString', coordinates: coords.map(p => [p[0], p[1]]) }
+  });
+  map.getSource('route-shortest').setData({
+    type: 'FeatureCollection', features: [line(d.shortest.coordinates)]
+  });
+  map.getSource('route-recommended').setData({
+    type: 'FeatureCollection', features: [line(d.recommended.coordinates)]
+  });
+  map.getSource('route-halo').setData({
+    type: 'FeatureCollection', features: [line(d.recommended.coordinates)]
+  });
+  const all = [...d.shortest.coordinates, ...d.recommended.coordinates];
+  const b = all.reduce((bb, c) => bb.extend([c[0], c[1]]),
+    new maplibregl.LngLatBounds([all[0][0], all[0][1]], [all[0][0], all[0][1]]));
+  map.fitBounds(b, { padding:{ top:140, bottom:120, left:420, right:420 },
+                     pitch:55, duration:1600, essential:true });
+}
+
+function clearRoutes(){
+  if(!map.getSource('route-shortest')) return;
+  const empty = { type:'FeatureCollection', features:[] };
+  map.getSource('route-shortest').setData(empty);
+  map.getSource('route-recommended').setData(empty);
+  map.getSource('route-halo').setData(empty);
+  $('results').hidden = true;
+}
+
+function showResults(d){
+  $('dest-name').textContent = d.destination_name || 'destination';
+  const card = (l, r, cls = '') => `
+    <div class="card ${cls}">
+      <div class="lbl">${l}</div>
+      <div class="val">${(r.distance_m / 1000).toFixed(2)}<small>km</small></div>
+      <p>Index ${r.risk_index}/100</p>
+      <p>Coverage ${(r.coverage * 100).toFixed(0)}%</p>
+    </div>`;
+  $('cards').innerHTML = card('Shortest', d.shortest) +
+                        card('Risk-adjusted', d.recommended, 'rec');
+  $('reasons').innerHTML = [...(d.reasons || []), ...(d.limitations || [])]
+    .map(x => `<li>${esc(x)}</li>`).join('');
+  $('results').hidden = false;
+}
+
+$('close-results').onclick = () => { $('results').hidden = true; };
+
+/* ============ REGION CHANGE ============ */
+$('region').onchange = () => {
+  const c = REGIONS[$('region').value];
+  if(!c) return;
+  $('hazard').value = c.hazard || 'earthquake';
+  map.flyTo({ center:[c.lon, c.lat], zoom:12, pitch:60, bearing:-22,
+              duration:2000, essential:true });
+  setPill();
+  clearRoutes();
+  clearPoints();
+  safeSpots = [];
+  renderSafeSpots();
+  $('status').textContent = '';
+};
+
+/* ============ CAMERA ============ */
+let tilted = true;
+$('tilt').onclick = () => {
+  tilted = !tilted;
+  map.easeTo({ pitch: tilted ? 60 : 0, duration:900, essential:true });
+  $('tilt').textContent = tilted ? '3D' : '2D';
+  $('tilt').classList.toggle('active', tilted);
+};
+$('rotate').onclick = () => map.easeTo({ bearing: map.getBearing() + 45, duration:600 });
+$('recenter').onclick = () => {
+  const c = REGIONS[$('region').value];
+  if(c) map.flyTo({ center:[c.lon, c.lat], zoom:12, pitch:60, bearing:-22,
+                    duration:1400, essential:true });
+};
+
+function esc(t){
+  return String(t ?? '').replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+/* ============ CHAT (streaming LLM) ============ */
+(function(){
+  const chat = $('chat'), head = $('chat-head'), body = $('chat-body'),
+        q = $('chat-q'), send = $('chat-send'), statusEl = $('chat-status');
+
+  let dragging = false, offsetX = 0, offsetY = 0, moved = false;
+  head.addEventListener('pointerdown', e => {
+    if(e.target.id === 'chat-chev') return;
+    dragging = true; moved = false;
+    const r = chat.getBoundingClientRect();
+    offsetX = e.clientX - r.left;
+    offsetY = e.clientY - r.top;
+    chat.classList.add('dragging');
+    head.setPointerCapture(e.pointerId);
+  });
+  head.addEventListener('pointermove', e => {
+    if(!dragging) return;
+    moved = true;
+    const x = Math.max(8, Math.min(window.innerWidth - chat.offsetWidth - 8, e.clientX - offsetX));
+    const y = Math.max(8, Math.min(window.innerHeight - chat.offsetHeight - 8, e.clientY - offsetY));
+    chat.style.left = x + 'px'; chat.style.top = y + 'px';
+    chat.style.right = 'auto'; chat.style.bottom = 'auto';
+  });
+  head.addEventListener('pointerup', () => {
+    if(!dragging) return;
+    dragging = false; chat.classList.remove('dragging');
+    if(!moved) chat.classList.toggle('collapsed');
+  });
+  $('chat-chev').addEventListener('click', e => {
+    e.stopPropagation(); chat.classList.toggle('collapsed');
+  });
+
+  fetch('/api/llm/status').then(r => r.json()).then(d => {
+    if(d.available) statusEl.textContent = 'Ready · ' + d.configured_model;
+    else {
+      statusEl.textContent = 'Local model not running';
+      statusEl.style.color = '#ffb8a0';
+    }
+  }).catch(() => { statusEl.textContent = 'Status unknown'; });
+
+  function addMsg(kind, text){
+    const el = document.createElement('div');
+    el.className = 'msg ' + kind;
+    el.textContent = text;
+    body.appendChild(el);
+    body.scrollTop = body.scrollHeight;
+    return el;
+  }
+
+  async function ask(text){
+    if(!text.trim()) return;
+    addMsg('user', text);
+    q.value = '';
+    send.disabled = true;
+
+    const pending = addMsg('bot', '');
+    pending.classList.add('thinking');
+    let firstChunk = true;
+
+    try{
+      const r = await fetch('/api/llm/stream', {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json', 'X-CSRF-Token': CSRF },
+        body: JSON.stringify({
+          question: text,
+          context: {
+            lat: points.origin?.[0],
+            lon: points.origin?.[1],
+            region: $('region').value,
+            hazard: $('hazard').value
+          }
+        })
+      });
+
+      if(!r.ok || !r.body){
+        pending.classList.remove('thinking');
+        pending.className = 'msg bot error';
+        pending.textContent = 'Local model not responding.';
+        send.disabled = false;
+        return;
+      }
+
+      const reader = r.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while(true){
+        const { value, done } = await reader.read();
+        if(done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split('\n\n');
+        buffer = events.pop();
+
+        for(const evt of events){
+          const line = evt.trim();
+          if(!line.startsWith('data:')) continue;
+          const jsonStr = line.slice(5).trim();
+          if(!jsonStr) continue;
+          let obj;
+          try { obj = JSON.parse(jsonStr); } catch(e){ continue; }
+
+          if(obj.error){
+            pending.classList.remove('thinking');
+            pending.className = 'msg bot error';
+            pending.textContent = obj.error;
+            send.disabled = false;
+            return;
+          }
+          if(obj.chunk){
+            if(firstChunk){
+              pending.textContent = '';
+              pending.classList.remove('thinking');
+              firstChunk = false;
+            }
+            pending.textContent += obj.chunk;
+            body.scrollTop = body.scrollHeight;
+          }
+        }
+      }
+
+      pending.classList.remove('thinking');
+      if(firstChunk){
+        pending.className = 'msg bot error';
+        pending.textContent = 'Model returned nothing.';
+      }
+    }catch(e){
+      pending.classList.remove('thinking');
+      pending.className = 'msg bot error';
+      pending.textContent = 'Could not reach the local model: ' + e.message;
+    }
+
+    send.disabled = false;
+    body.scrollTop = body.scrollHeight;
+  }
+
+  send.onclick = () => ask(q.value);
+  q.onkeydown = e => { if(e.key === 'Enter'){ e.preventDefault(); ask(q.value); } };
+  document.querySelectorAll('.chat-prompts button').forEach(b => {
+    b.onclick = () => ask(b.dataset.q);
+  });
+})();
+
+/* ============ INIT ============ */
+const c = REGIONS[$('region').value];
+if(c) map.jumpTo({ center:[c.lon, c.lat], zoom:12, pitch:60, bearing:-22 });
+setPill();
+updateSteps();
+</script>
+</body></html>

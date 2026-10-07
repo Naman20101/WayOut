@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="csrf-token" content="{{ csrf }}"><title>Sign in · WAYOUT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500&display=swap" rel="stylesheet">
+<style>
+:root{--green:#0f2a24;--paper:#f8f7f3;--muted:#6b7a72;--line:rgba(15,42,36,.10);
+  --soft:#eef1ec;--glass-b:rgba(255,255,255,.5)}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:'Inter',sans-serif;background:var(--paper);
+  display:flex;align-items:center;justify-content:center;padding:32px;
+  -webkit-font-smoothing:antialiased;color:var(--green)}
+.card{width:100%;max-width:440px;background:rgba(255,254,251,.9);
+  backdrop-filter:blur(28px);border:1px solid var(--glass-b);
+  border-radius:24px;padding:44px;box-shadow:0 32px 80px rgba(15,42,36,.14)}
+.eyebrow{font-size:10px;letter-spacing:.2em;text-transform:uppercase;
+  font-weight:700;color:var(--muted);margin-bottom:14px;
+  display:flex;align-items:center;gap:8px}
+.eyebrow::before{content:"";width:6px;height:6px;border-radius:50%;
+  background:var(--green);box-shadow:0 0 0 3px rgba(22,53,47,.12)}
+h1{font-family:'Fraunces',serif;font-size:34px;font-weight:500;
+  letter-spacing:-.03em;margin:0 0 8px;line-height:1.1}
+.sub{font-size:13px;color:var(--muted);margin-bottom:32px;line-height:1.55}
+label{display:block;font-size:11px;font-weight:600;margin:16px 0 6px}
+input{width:100%;padding:13px 15px;font-size:14px;font-family:inherit;
+  border:1px solid var(--line);border-radius:12px;background:#fff;
+  color:var(--green);transition:border-color .15s,box-shadow .15s}
+input:focus{outline:none;border-color:var(--green);
+  box-shadow:0 0 0 3px rgba(22,53,47,.10)}
+button{width:100%;margin-top:24px;padding:15px;border:none;
+  border-radius:12px;background:linear-gradient(135deg,#16352f,#0f2a24);
+  color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;
+  transition:transform .15s,box-shadow .25s}
+button:hover{transform:translateY(-1px);box-shadow:0 12px 28px rgba(15,42,36,.22)}
+.err{padding:12px 14px;border-radius:10px;
+  background:rgba(196,90,60,.12);border:1px solid rgba(196,90,60,.3);
+  color:#8a2e1a;font-size:12px;margin-top:16px}
+.alt{margin-top:20px;padding-top:20px;border-top:1px solid var(--line);
+  text-align:center;font-size:12px;color:var(--muted)}
+.alt a{color:var(--green);font-weight:600;text-decoration:underline}
+</style></head>
+<body>
+<div class="card">
+  <div class="eyebrow">Welcome back</div>
+  <h1>Sign in.</h1>
+  <p class="sub">Your saved home area and past routes will be ready.</p>
+  {% if error %}<div class="err">{{ error }}</div>{% endif %}
+  <form method="post">
+    <input type="hidden" name="next" value="{{ next|default('/') }}">
+    <label for="username">Username</label>
+    <input id="username" name="username" required autocomplete="username">
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" required
+           autocomplete="current-password">
+    <button type="submit">Sign in</button>
+  </form>
+  <p class="alt">New here? <a href="/signup">Create an account</a></p>
+</div>
+</body></html>

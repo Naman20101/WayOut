@@ -11,6 +11,6 @@ if (!(Get-NetTCPConnection -LocalPort 3307 -State Listen -ErrorAction SilentlyCo
     Start-Process -FilePath (Join-Path $mysqlBase 'bin\mysqld.exe') -ArgumentList $mysqlArgs -WindowStyle Hidden
 }
 if (!(Get-NetTCPConnection -LocalPort 5000 -State Listen -ErrorAction SilentlyContinue)) {
-    Start-Process -FilePath $pythonPath -ArgumentList @('app.py') -WorkingDirectory $projectDir -WindowStyle Hidden -RedirectStandardOutput (Join-Path $projectDir 'server.log') -RedirectStandardError (Join-Path $projectDir 'server-error.log')
+    Start-Process -FilePath $pythonPath -ArgumentList @('run.py') -WorkingDirectory $projectDir -WindowStyle Hidden -RedirectStandardOutput (Join-Path $projectDir 'server.log') -RedirectStandardError (Join-Path $projectDir 'server-error.log')
 }
 Write-Host 'WAYOUT is starting at http://127.0.0.1:5000. Allow MySQL a few seconds to initialise.'
