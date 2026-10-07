@@ -31,6 +31,14 @@ def create_app(test_config=None):
 
     auth.init_db()
 
+    # Warm up the LLM in a background thread so the first chat is fast.
+    try:
+        import threading
+        from backend.llm_helper import warmup
+        threading.Thread(target=warmup, daemon=True).start()
+    except Exception:
+        pass
+
     # ---------------- helpers ----------------
     def _is_custom(rid):
         return isinstance(rid, str) and rid.startswith('custom_')
@@ -73,9 +81,6 @@ def create_app(test_config=None):
             session['sid'] = secrets.token_urlsafe(24)
         if 'csrf' not in session:
             session['csrf'] = secrets.token_urlsafe(24)
-        # CSRF check skips the streaming endpoint: EventSource-style
-        # requests can't reliably round-trip a header through every
-        # proxy chain, and the stream is read-only anyway.
         if request.method in ('POST', 'DELETE', 'PUT') and \
            request.path.startswith('/api/') and \
            request.path != '/api/llm/stream' and \
@@ -295,8 +300,6 @@ def create_app(test_config=None):
 
     @app.get('/api/hazards_here')
     def hazards_here():
-        """Baseline + live hazards at a coordinate. Combines
-        ThinkHazard!, GDACS and NASA EONET."""
         from backend.global_hazards import location_hazard_profile
         try:
             lat = float(request.args.get('lat'))
@@ -309,11 +312,6 @@ def create_app(test_config=None):
 
     @app.get('/api/global_alerts')
     def global_alerts():
-        """Recent GDACS events worldwide.
-
-        Used by the landing page and the map's live-alert ticker to show
-        what's happening right now, anywhere on Earth. Not location-scoped.
-        """
         from backend.global_hazards import gdacs_global_recent
         try:
             days = min(30, max(1, int(request.args.get('days', '14'))))
@@ -362,8 +360,6 @@ def create_app(test_config=None):
 
     @app.get('/api/route_to_nearest')
     def route_to_nearest():
-        """Auto-route to the nearest source-backed destination from
-        a given point. Returns a full compare() result plus destination."""
         from backend.routing.risk_router import compare as compare_routes
         r = region_param()
         try:
@@ -417,25 +413,19 @@ def create_app(test_config=None):
         q = (d.get('question') or '').strip()
         if not q:
             raise ValueError('Ask a question.')
-        if len(q) > 800:
-            q = q[:800]
+        if len(q) > 500:
+            q = q[:500]
         return jsonify(ask(q, context=d.get('context') or {}))
 
     @app.post('/api/llm/stream')
     def llm_stream():
-        """Server-Sent Events stream of LLM tokens.
-
-        CSRF is not required for this endpoint (see before_request).
-        The stream is read-only and identifies the user only via the
-        browser session, so a token replay gives no useful privilege.
-        """
         from backend.llm_helper import stream
         d = request.get_json(silent=True) or {}
         q = (d.get('question') or '').strip()
         if not q:
             raise ValueError('Ask a question.')
-        if len(q) > 800:
-            q = q[:800]
+        if len(q) > 500:
+            q = q[:500]
         ctx = d.get('context') or {}
 
         def generate():
@@ -713,7 +703,5 @@ def create_app(test_config=None):
 
 app = create_app()
 if __name__ == '__main__':
-    # HTTP only. Codespaces terminates SSL at the edge; running HTTPS
-    # locally causes intermittent connection errors during polling.
     app.run(host='127.0.0.1', port=int(os.getenv('PORT', '5000')),
             debug=False, threaded=True)

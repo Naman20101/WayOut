@@ -1,18 +1,12 @@
 """Offline LLM helper powered by Ollama.
 
-Ollama runs a local model server (default http://localhost:11434) with a
-REST API. This module wraps it for WAYOUT's survival-assistance use case.
-
-Speed-oriented choices:
-  - Default model is qwen2.5:1.5b: ~3x faster on CPU than gemma2:2b.
-  - keep_alive holds the model in RAM between requests.
-  - Streaming responses yield tokens to the client as they generate, so
-    even a slow model shows progress within one second.
-  - num_predict is capped at 200 tokens. Survival answers don't need more.
-  - System prompt is trimmed. A long prompt costs prefill time on every call.
-
-If Ollama is not running, callers get a clear "not available" response;
-the frontend can then show a rule-based assistant instead.
+Tuned for speed on CPU:
+  - Default model qwen2.5:0.5b (~400 MB, ~40 tok/s on CPU)
+  - keep_alive=-1 holds the model in RAM indefinitely
+  - num_predict=110 caps response length
+  - num_ctx=512 shrinks the KV cache so prefill is fast
+  - Barebones system prompt = minimal prefill cost
+  - warmup() preloads the model at Flask startup
 """
 import json
 import os
@@ -20,20 +14,12 @@ import os
 import requests
 
 OLLAMA_URL = os.getenv('OLLAMA_URL', 'http://127.0.0.1:11434')
-MODEL = os.getenv('OLLAMA_MODEL', 'qwen2.5:1.5b')
+MODEL = os.getenv('OLLAMA_MODEL', 'qwen2.5:0.5b')
 
-# Short system prompt = faster prefill = faster first token.
-SYSTEM_PROMPT = """You are WAYOUT's assistant for disasters and everyday life.
-Rules:
-- Under 100 words unless asked for detail.
-- Concrete actions, not general advice.
-- If life-threatening: say "call emergency services" first.
-- Never invent phone numbers or addresses.
-- Plain language. No jargon.
-- You may discuss first aid, shelter, water, fire, signalling, navigation,
-  power, staying warm or cool, food safety, evacuation basics, and also
-  respond helpfully to ordinary questions and casual conversation.
-"""
+SYSTEM_PROMPT = """Survival assistant. Answer in under 80 words.
+If life-threatening, say "call emergency services" first.
+Concrete actions only. Plain language.
+Topics: first aid, water, fire, shelter, warmth, navigation, disasters."""
 
 
 def _headers():
@@ -41,7 +27,6 @@ def _headers():
 
 
 def is_available():
-    """Return True if Ollama responds to a basic ping."""
     try:
         r = requests.get(f'{OLLAMA_URL}/api/tags', timeout=2)
         return r.status_code == 200
@@ -59,6 +44,29 @@ def list_models():
         return []
 
 
+def warmup(model=None):
+    """Load the model into RAM at startup so the first request is fast."""
+    model = model or MODEL
+    if not is_available():
+        return False
+    try:
+        r = requests.post(
+            f'{OLLAMA_URL}/api/generate',
+            json={
+                'model': model,
+                'prompt': 'hi',
+                'stream': False,
+                'keep_alive': -1,
+                'options': {'num_predict': 1, 'num_ctx': 128},
+            },
+            timeout=60,
+        )
+        return r.status_code == 200
+    except Exception as exc:
+        print(f'[llm] warmup failed: {exc}', flush=True)
+        return False
+
+
 def _build_payload(question, context=None, model=None, stream=False):
     model = model or MODEL
     user_msg = (question or '').strip()
@@ -66,48 +74,41 @@ def _build_payload(question, context=None, model=None, stream=False):
         parts = []
         if context.get('lat') and context.get('lon'):
             try:
-                parts.append(f"User location: {context['lat']:.4f}, {context['lon']:.4f}")
+                parts.append(f"at {context['lat']:.2f},{context['lon']:.2f}")
             except (TypeError, ValueError):
                 pass
         if context.get('region'):
-            parts.append(f"Region: {context['region']}")
+            parts.append(f"region {context['region']}")
         if context.get('hazard'):
-            parts.append(f"Active hazard: {context['hazard']}")
-        if context.get('scenario'):
-            parts.append(
-                f"SCENARIO (mock exercise): {context['scenario']}. "
-                f"Answer as if the user is in this emergency. "
-                f"Note it is a simulation outside this conversation."
-            )
+            parts.append(f"hazard {context['hazard']}")
         if parts:
-            user_msg = '\n'.join(parts) + '\n\nUser: ' + user_msg
+            user_msg = '[' + ', '.join(parts) + '] ' + user_msg
 
     return {
         'model': model,
         'system': SYSTEM_PROMPT,
         'prompt': user_msg,
         'stream': stream,
-        'keep_alive': '30m',
+        'keep_alive': -1,
         'options': {
-            'temperature': 0.4,
-            'num_predict': 200,
-            'num_ctx': 1024,
+            'temperature': 0.5,
+            'num_predict': 110,
+            'num_ctx': 512,
             'top_p': 0.9,
             'repeat_penalty': 1.1,
+            'num_thread': 4,
         },
     }
 
 
-def ask(question, context=None, model=None, timeout=120):
-    """Non-streaming ask. Returns {available, answer, model, error}."""
+def ask(question, context=None, model=None, timeout=45):
     model = model or MODEL
     if not is_available():
         return {
             'available': False,
             'answer': None,
             'model': model,
-            'error': 'Local LLM is not running. Start it with: '
-                     'ollama serve (and: ollama pull ' + model + ')',
+            'error': 'Local LLM is not running.',
         }
     payload = _build_payload(question, context, model, stream=False)
     try:
@@ -124,23 +125,15 @@ def ask(question, context=None, model=None, timeout=120):
             'error': None,
         }
     except requests.exceptions.Timeout:
-        return {
-            'available': True, 'answer': None, 'model': model,
-            'error': 'The local model timed out. Try a shorter question '
-                     'or restart Ollama.',
-        }
+        return {'available': True, 'answer': None, 'model': model,
+                'error': 'Model timed out. Try a shorter question.'}
     except Exception as exc:
         return {'available': True, 'answer': None, 'model': model,
                 'error': str(exc)}
 
 
 def stream(question, context=None, model=None):
-    """Streaming ask. Yields plain string chunks as they generate.
-
-    Yields nothing and raises RuntimeError if Ollama is unreachable. The
-    caller (a Flask streaming response) is expected to catch this and
-    send an error payload.
-    """
+    """Streaming ask. Yields chunks as they generate."""
     model = model or MODEL
     if not is_available():
         raise RuntimeError('Local LLM is not running.')

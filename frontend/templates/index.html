@@ -1,188 +1,488 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="csrf-token" content="{{ csrf }}"><meta name="theme-color" content="#16352F"><title>WAYOUT · Safer Routes. Brighter Tomorrows.</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{url_for('static',filename='vendor/leaflet.css')}}">
-<link rel="stylesheet" href="{{url_for('static',filename='css/style.css')}}">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="csrf-token" content="{{ csrf }}"><meta name="theme-color" content="#0a1f1a"><title>WAYOUT · Find your way out</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <style>
-body{font-family:'Inter',system-ui,sans-serif}
-.hero h1,.section-heading h2,.how h2{font-family:'Fraunces',serif;font-weight:400;
-letter-spacing:-.035em}
-.hero h1 em{font-style:italic;color:#8a9c88}
+:root{--ink:#0a1f1a;--ink-2:#16352f;--ink-3:#20453c;--cream:#e8d9b3;--sand:#d6c7a1;
+--sand-2:#c49361;--paper:#f8f7f3;--muted:#6b7a72;--line-d:rgba(232,217,179,.14);
+--line-l:rgba(10,31,26,.09);--glass:rgba(255,254,251,.72);--glass-b:rgba(255,255,255,.55);
+--shadow-m:0 12px 32px rgba(10,31,26,.14);--shadow-l:0 32px 80px rgba(10,31,26,.24)}
+*{box-sizing:border-box}html{scroll-behavior:smooth}html,body{margin:0;padding:0}
+body{font-family:'Inter',system-ui,sans-serif;color:var(--ink);background:var(--paper);
+font-feature-settings:'cv11','ss01','ss03';-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit;text-decoration:none}button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace;letter-spacing:-.01em}
+
+/* GRAIN */
+.grain{position:fixed;inset:0;z-index:9998;pointer-events:none;opacity:.04;
+mix-blend-mode:overlay;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
+
+/* NAV */
+.nav{position:fixed;top:22px;left:50%;transform:translateX(-50%);z-index:1000;
+display:flex;align-items:center;gap:32px;padding:10px 20px;border-radius:40px;
+background:rgba(10,31,26,.72);backdrop-filter:blur(28px) saturate(180%);
+border:1px solid rgba(232,217,179,.12);box-shadow:var(--shadow-m);
+font-size:13px;max-width:calc(100vw - 40px);transition:background .4s,border-color .4s}
+.nav.light{background:rgba(255,254,251,.9);border-color:rgba(255,255,255,.5)}
+.nav .brand{display:flex;align-items:center;gap:9px;font-weight:700;color:#fff;
+letter-spacing:.02em;font-size:13.5px;transition:color .4s}
+.nav.light .brand{color:var(--ink)}
+.nav .brand-dot{width:8px;height:8px;border-radius:50%;
+background:radial-gradient(circle at 30% 30%,#a7e6b8,#4a9d6a);box-shadow:0 0 12px rgba(167,230,184,.6)}
+.nav nav{display:flex;gap:22px}
+.nav nav a{color:rgba(255,255,255,.62);font-weight:500;font-size:12.5px;
+transition:color .2s;position:relative;padding:4px 0}
+.nav.light nav a{color:var(--muted)}
+.nav nav a:hover,.nav nav a.active{color:#fff}
+.nav.light nav a:hover,.nav.light nav a.active{color:var(--ink)}
+.nav nav a.active::after{content:"";position:absolute;left:0;right:0;bottom:-4px;
+height:2px;background:var(--cream);border-radius:2px}
+.nav.light nav a.active::after{background:var(--ink)}
+.nav .nav-right{display:flex;gap:8px;align-items:center}
+.nav .btn-nav{padding:9px 18px;border-radius:22px;font-size:12px;font-weight:600;
+transition:all .2s;white-space:nowrap}
+.nav .btn-nav.primary{background:var(--cream);color:var(--ink)}
+.nav .btn-nav.primary:hover{background:var(--sand);transform:translateY(-1px)}
+.nav .btn-nav.ghost{color:rgba(255,255,255,.75);font-weight:600}
+.nav.light .btn-nav.ghost{color:var(--ink)}
+
+/* HERO */
+.hero{position:relative;height:100vh;min-height:680px;overflow:hidden;background:var(--ink)}
+#hero-map{position:absolute;inset:0;z-index:1}
+.hero-scrim{position:absolute;inset:0;z-index:3;pointer-events:none;
+background:
+radial-gradient(85% 75% at 0% 100%,rgba(4,20,16,.95) 0%,rgba(4,20,16,.72) 28%,rgba(4,20,16,.24) 55%,rgba(4,20,16,0) 78%),
+linear-gradient(180deg,rgba(4,20,16,.55) 0%,rgba(4,20,16,0) 22%,rgba(4,20,16,.05) 60%,rgba(4,20,16,.55) 100%)}
+.hero-content{position:absolute;left:5vw;bottom:10vh;z-index:10;max-width:min(820px,85vw);color:#fff}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:10px;font-size:10.5px;
+letter-spacing:.22em;text-transform:uppercase;font-weight:600;padding:8px 16px;
+border-radius:26px;background:rgba(232,217,179,.1);backdrop-filter:blur(16px);
+border:1px solid rgba(232,217,179,.18);margin-bottom:24px;color:rgba(232,217,179,.95);
+font-family:'JetBrains Mono',monospace}
+.hero-eyebrow .dot{width:6px;height:6px;border-radius:50%;background:#a7e6b8;
+box-shadow:0 0 10px #a7e6b8;animation:pulseDot 2s ease-in-out infinite}
+@keyframes pulseDot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.4)}}
+.hero h1{font-family:'Fraunces',serif;font-size:clamp(40px,5.2vw,88px);font-weight:300;
+line-height:1.02;letter-spacing:-.04em;margin:0 0 22px;text-shadow:0 6px 44px rgba(0,0,0,.6),0 2px 12px rgba(0,0,0,.4)}
 .hero h1 .line{display:block}
-#hero-map{height:100%;width:100%}
-.hero-map-card{position:relative;height:520px;border-radius:20px;overflow:hidden;
-border:1px solid rgba(22,53,47,.14);box-shadow:0 20px 60px rgba(22,53,47,.14)}
-.hero-map-card .map-topline{position:absolute;top:0;left:0;right:0;z-index:500;
-background:rgba(250,249,246,.92);backdrop-filter:blur(12px);
-padding:14px 18px;display:flex;align-items:center;gap:10px;
-font-size:11px;letter-spacing:.12em;font-weight:600;color:#16352f}
-.hero-map-card .map-topline span:last-child{margin-left:auto;font-weight:400;
-letter-spacing:0;color:#718079}
-.hero-map-card .map-float{position:absolute;bottom:22px;left:22px;right:22px;
-background:rgba(255,254,251,.94);backdrop-filter:blur(16px);
-border:1px solid rgba(255,255,255,.7);border-radius:16px;
-padding:22px;z-index:500;box-shadow:0 12px 32px rgba(10,31,26,.12)}
-.hero-map-card .map-float strong{display:block;font-size:22px;color:#16352f;
-font-family:'Fraunces',serif;font-weight:400;letter-spacing:-.02em;
-margin:6px 0 4px}
-.hero-map-card .map-float a{display:flex;justify-content:space-between;
-border-top:1px solid rgba(22,53,47,.12);margin-top:14px;padding-top:12px;
-font-size:12px;color:#16352f;font-weight:600}
-.small-label{font-size:10px;letter-spacing:.16em;color:#718079;font-weight:700}
+.hero h1 em{font-style:italic;font-weight:300;color:var(--cream)}
+.hero .lede{font-size:clamp(14.5px,1.05vw,16.5px);line-height:1.6;max-width:560px;
+margin:0 0 34px;color:rgba(255,255,255,.85);text-shadow:0 2px 20px rgba(0,0,0,.55)}
+.hero-actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.btn-hero{display:inline-flex;align-items:center;gap:14px;padding:16px 28px;
+border-radius:32px;font-size:13.5px;font-weight:600;
+transition:transform .2s,box-shadow .3s,background .2s;cursor:pointer;
+border:none;font-family:inherit}
+.btn-hero.primary{background:var(--cream);color:var(--ink);
+box-shadow:0 14px 40px rgba(0,0,0,.4)}
+.btn-hero.primary:hover{transform:translateY(-2px);background:var(--sand);
+box-shadow:0 22px 56px rgba(0,0,0,.5)}
+.btn-hero.ghost{background:rgba(255,255,255,.08);backdrop-filter:blur(14px);
+color:#fff;border:1px solid rgba(255,255,255,.18)}
+.btn-hero.ghost:hover{background:rgba(255,255,255,.14);transform:translateY(-2px)}
+
+.hero-tour{position:absolute;bottom:32px;right:5vw;z-index:10;display:flex;
+align-items:center;gap:12px;padding:10px 16px;background:rgba(10,31,26,.6);
+backdrop-filter:blur(16px);border:1px solid rgba(232,217,179,.16);
+border-radius:26px;font-family:'JetBrains Mono',monospace;font-size:10px;
+letter-spacing:.14em;text-transform:uppercase;color:rgba(232,217,179,.75);font-weight:500}
+.hero-tour .live-dot{width:6px;height:6px;border-radius:50%;background:#a7e6b8;
+box-shadow:0 0 8px #a7e6b8;animation:pulseDot 1.6s ease-in-out infinite}
+.hero-tour .stage{color:#fff;min-width:80px}
+
+.hero-scroll{position:absolute;bottom:30px;left:5vw;z-index:10;display:flex;
+align-items:center;gap:12px;color:rgba(255,255,255,.5);
+font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.24em;
+text-transform:uppercase;font-weight:500;pointer-events:none}
+.hero-scroll .bar{width:32px;height:1px;background:rgba(255,255,255,.4);
+position:relative;overflow:hidden}
+.hero-scroll .bar::after{content:"";position:absolute;inset:0;background:var(--cream);
+animation:scrollLine 2.4s ease-in-out infinite}
+@keyframes scrollLine{0%{transform:translateX(-100%)}50%{transform:translateX(0)}100%{transform:translateX(100%)}}
+
+/* STATS BAND */
+.band{background:var(--paper);padding:120px 6vw}
+.band-inner{max-width:1360px;margin:0 auto;display:grid;
+grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line-l);
+border-bottom:1px solid var(--line-l)}
+.band-item{padding:56px 32px;position:relative}
+.band-item:not(:last-child)::after{content:"";position:absolute;top:32px;
+bottom:32px;right:0;width:1px;background:var(--line-l)}
+.band-item .k{font-family:'JetBrains Mono',monospace;font-size:10px;
+letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:500;
+margin-bottom:16px;display:block}
+.band-item .v{font-family:'Fraunces',serif;font-size:clamp(38px,4vw,58px);
+font-weight:400;color:var(--ink);letter-spacing:-.04em;line-height:1;
+display:block}
+.band-item .v small{font-size:.42em;color:var(--sand-2);margin-left:4px;
+font-family:'Inter',sans-serif;font-weight:500}
+.band-item .d{font-size:13px;line-height:1.6;color:var(--muted);
+margin-top:14px;max-width:240px}
+
+/* FEATURES */
+.features{background:var(--paper);padding:0 6vw 140px}
+.features-inner{max-width:1360px;margin:0 auto}
+.features-head{max-width:800px;margin-bottom:72px}
+.features-head .eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;
+letter-spacing:.22em;text-transform:uppercase;font-weight:500;
+color:var(--sand-2);margin-bottom:22px;display:flex;align-items:center;gap:14px}
+.features-head .eyebrow::after{content:"";flex:1;max-width:60px;height:1px;
+background:var(--sand-2);opacity:.4}
+.features-head h2{font-family:'Fraunces',serif;font-size:clamp(36px,4.2vw,62px);
+font-weight:300;line-height:1.04;letter-spacing:-.04em;color:var(--ink);
+margin:0 0 24px}
+.features-head h2 em{font-style:italic;color:var(--sand-2)}
+.features-head p{font-size:17px;line-height:1.65;color:var(--muted);max-width:620px}
+.feature-list{border-top:1px solid var(--line-l)}
+.feature-row{display:grid;grid-template-columns:80px 1fr 1.2fr;gap:48px;
+padding:44px 0;border-bottom:1px solid var(--line-l);align-items:baseline;
+transition:background .3s}
+.feature-row:hover{background:rgba(232,217,179,.06)}
+.feature-row .idx{font-family:'JetBrains Mono',monospace;font-size:11px;
+letter-spacing:.14em;color:var(--sand-2);font-weight:500}
+.feature-row h3{font-family:'Fraunces',serif;font-size:26px;font-weight:400;
+color:var(--ink);letter-spacing:-.025em;margin:0;line-height:1.2}
+.feature-row h3 em{font-style:italic;color:var(--sand-2)}
+.feature-row p{font-size:15px;line-height:1.7;color:var(--muted);margin:0}
+
+/* CTA */
+.cta{background:var(--ink);color:#fff;padding:150px 6vw;position:relative;
+overflow:hidden;isolation:isolate}
+.cta::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+opacity:.16;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'><g fill='none' stroke='%23e8d9b3' stroke-width='.7'><path d='M-50,220 Q80,120 200,180 T450,140 T700,200'/><path d='M-50,250 Q90,150 210,210 T460,170 T700,230'/></g></svg>");
+background-size:600px 400px}
+.cta-inner{position:relative;z-index:1;max-width:1000px;margin:0 auto;text-align:center}
+.cta .eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;
+letter-spacing:.24em;text-transform:uppercase;font-weight:500;
+color:rgba(232,217,179,.6);margin-bottom:28px;display:inline-flex;
+align-items:center;gap:14px}
+.cta .eyebrow::before,.cta .eyebrow::after{content:"";width:26px;height:1px;
+background:rgba(232,217,179,.4)}
+.cta h2{font-family:'Fraunces',serif;font-size:clamp(38px,5vw,78px);
+font-weight:300;line-height:1.02;letter-spacing:-.04em;color:#fff;margin:0 0 26px}
+.cta h2 em{font-style:italic;color:var(--cream)}
+.cta p{font-size:16px;line-height:1.65;color:rgba(255,255,255,.65);
+max-width:580px;margin:0 auto 42px}
+.cta .btn-hero.primary{background:var(--cream);color:var(--ink)}
+.cta .btn-hero.primary:hover{background:var(--sand)}
+
+/* FOOTER */
+footer{background:#071613;color:#7f9189;padding:72px 6vw 44px;font-size:13px}
+.footer-top{display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:64px;
+padding-bottom:52px;border-bottom:1px solid rgba(255,255,255,.06);
+max-width:1360px;margin:0 auto}
+.footer-top h4{color:#fff;font-family:'JetBrains Mono',monospace;font-size:10px;
+letter-spacing:.2em;text-transform:uppercase;margin:0 0 22px;font-weight:500}
+.footer-top p{line-height:1.7;margin:0 0 16px;font-size:13px;color:#8a9c92;
+max-width:400px}
+.footer-top ul{list-style:none;padding:0;margin:0}
+.footer-top li{margin-bottom:12px}
+.footer-top a{color:#b5c4bc;transition:color .2s}
+.footer-top a:hover{color:var(--cream)}
+.footer-bottom{display:flex;justify-content:space-between;align-items:center;
+padding-top:28px;font-size:11px;flex-wrap:wrap;gap:16px;
+max-width:1360px;margin:0 auto}
+.footer-bottom .mono{color:rgba(232,217,179,.4)}
+
+@media(max-width:1000px){
+  .nav{gap:16px;padding:9px 16px}
+  .nav nav{display:none}
+  .hero-content{left:5vw;right:5vw;bottom:10vh;max-width:none}
+  .hero-tour{display:none}
+  .band-inner{grid-template-columns:1fr 1fr}
+  .band-item:nth-child(2)::after{display:none}
+  .band-item{padding:44px 24px}
+  .feature-row{grid-template-columns:1fr;gap:12px;padding:32px 0}
+}
+@media(max-width:760px){
+  .nav .btn-nav.ghost{display:none}
+  .hero h1{font-size:clamp(36px,10vw,54px)}
+  .band-inner{grid-template-columns:1fr}
+  .band-item::after{display:none !important}
+  .footer-top{grid-template-columns:1fr;gap:40px}
+  .cta{padding:100px 6vw}
+}
 </style></head>
 <body>
 
-<header class="nav">
+<div class="grain"></div>
+
+<header class="nav" id="nav">
   <a href="/" class="brand"><span class="brand-dot"></span>WAYOUT</a>
   <nav>
-    <a href="/map">Risk map</a>
+    <a href="/map" class="active">Map</a>
     <a href="/dashboard">Overview</a>
     <a href="/shelters">Destinations</a>
     <a href="/methodology">Methodology</a>
-    <a href="/data">Our data</a>
   </nav>
-  <div style="display:flex;gap:8px;align-items:center">
+  <div class="nav-right">
     {% if current_user %}
-      <a href="/map" class="nav-cta">Plan a route <span>↗</span></a>
+      <a href="/map" class="btn-nav primary">Plan route</a>
     {% else %}
-      <a href="/login" class="nav-cta" style="background:transparent;color:var(--green)">Sign in</a>
-      <a href="/signup" class="nav-cta">Get started <span>↗</span></a>
+      <a href="/login" class="btn-nav ghost">Sign in</a>
+      <a href="/signup" class="btn-nav primary">Get started</a>
     {% endif %}
   </div>
 </header>
 
-<main>
-<section class="hero wrap">
-  <div class="hero-copy">
-    <div class="eyebrow"><span class="dot"></span> PREPAREDNESS, WITH PERSPECTIVE</div>
+<section class="hero">
+  <div id="hero-map"></div>
+  <div class="hero-scrim"></div>
+
+  <div class="hero-content">
+    <div class="hero-eyebrow"><span class="dot"></span> Live global disaster readiness</div>
     <h1>
-      <span class="line">Safer routes.</span>
-      <span class="line"><em>Brighter</em></span>
-      <span class="line">tomorrows.</span>
+      <span class="line">Every disaster</span>
+      <span class="line">has a way out.</span>
+      <span class="line"><em>We find it.</em></span>
     </h1>
-    <p>Every route tells a different story.<br>
-       Explore the risks, understand your options,<br>
-       and plan a more informed way out.</p>
-    <div class="actions">
-      <a class="button" href="/map">Find Your Way Out <span>↗</span></a>
-      <a class="text-link" href="/methodology">Read the methodology →</a>
+    <p class="lede">
+      WAYOUT reads your location, tells you which natural hazards threaten it,
+      and routes you to the nearest shelter through open terrain — real 3D
+      elevation, live alerts, honest data.
+    </p>
+    <div class="hero-actions">
+      <a href="/map" class="btn-hero primary">Open the live map <span>↗</span></a>
+      <a href="/signup" class="btn-hero ghost">Create an account</a>
     </div>
-    <div class="hero-note"><span>◎</span> Built on public data. Designed for understanding.</div>
   </div>
 
-  <div class="hero-map-card">
-    <div class="map-topline">
-      <span class="dot"></span>
-      <b id="hero-region-label">KOCHI / ERNAKULAM</b>
-      <span>15 km study area</span>
+  <div class="hero-tour" id="hero-tour">
+    <span class="live-dot"></span>
+    <span>Viewing</span>
+    <span class="stage" id="tour-stage">Scottish Highlands</span>
+  </div>
+
+  <div class="hero-scroll">
+    <span>Scroll</span>
+    <span class="bar"></span>
+  </div>
+</section>
+
+<section class="band">
+  <div class="band-inner">
+    <div class="band-item">
+      <span class="k">Road edges indexed</span>
+      <span class="v">783<small>K</small></span>
+      <p class="d">Undirected edges across three 15 km study circles, before mode-specific expansion.</p>
     </div>
-    <div id="hero-map"></div>
-    <div class="map-float">
-      <span class="small-label">A DIFFERENT WAY TO NAVIGATE</span>
-      <strong>Beyond the shortest path.</strong>
-      <p style="font-size:12px;color:#718079;margin-top:4px">
-        Road networks meet historical hazard data.
-      </p>
-      <a href="/map">Open the live map <span>↗</span></a>
+    <div class="band-item">
+      <span class="k">Terrain samples</span>
+      <span class="v">1.4<small>M</small></span>
+      <p class="d">SRTMGL1 elevation readings sampled at 40 m intervals along every road segment.</p>
+    </div>
+    <div class="band-item">
+      <span class="k">Hazard feeds</span>
+      <span class="v">3</span>
+      <p class="d">ThinkHazard! baseline, GDACS live alerts, and NASA EONET satellite events.</p>
+    </div>
+    <div class="band-item">
+      <span class="k">Traceable sources</span>
+      <span class="v">100<small>%</small></span>
+      <p class="d">Every score is linked to a URL, a hash, a date, and a licence.</p>
     </div>
   </div>
 </section>
 
-<div class="disclaimer wrap">
-  <span class="outline-icon">i</span>
-  <p><strong>For preparedness. Never a substitute for official guidance.</strong>
-     {{disclaimer}}</p>
-</div>
-
-<section class="wrap regions-section">
-  <div class="section-heading">
-    <div>
-      <div class="eyebrow">THREE PLACES. DIFFERENT RISKS.</div>
-      <h2 style="margin-top:16px">A local view of a global challenge.</h2>
+<section class="features">
+  <div class="features-inner">
+    <div class="features-head">
+      <div class="eyebrow">What's inside</div>
+      <h2>Built for the moment <em>you need it.</em></h2>
+      <p>No logins to remember. No menus to navigate. No points to place
+         manually. It reads your location, tells you what's happening, and
+         shows the way out.</p>
     </div>
-    <p>Focused study areas.<br>Transparent, region-specific evidence.</p>
-  </div>
-  <div class="region-grid">
-    {% for key,r in regions.items() %}
-    <a class="region-card" href="/map?region={{key}}">
-      <span class="region-number">0{{loop.index}} / {{r.country}}</span>
-      <div class="region-symbol">
-        {% if key=='kochi' %}≋{% elif key=='kathmandu' %}△{% else %}▥{% endif %}
+    <div class="feature-list">
+      <div class="feature-row">
+        <span class="idx">01 / TERRAIN</span>
+        <h3>Global 3D <em>elevation</em></h3>
+        <p>Real NASA SRTM terrain streamed from AWS Open Data. Rotate, tilt,
+           and read slope and elevation band along any route.</p>
       </div>
-      <h3>{{r.short}}</h3>
-      <p>{{r.subtitle}}</p>
-      <div class="region-bottom">
-        <span>{{'Flood exposure' if key=='kochi'
-                else ('Historical shaking' if key=='kathmandu'
-                else 'Collapse & fire risk')}}</span>
-        <span>↗</span>
+      <div class="feature-row">
+        <span class="idx">02 / HAZARDS</span>
+        <h3>Live and <em>baseline</em></h3>
+        <p>ThinkHazard! for static classification. GDACS and NASA EONET for
+           live alerts. Nothing invented, nothing interpolated blindly.</p>
       </div>
-    </a>
-    {% endfor %}
+      <div class="feature-row">
+        <span class="idx">03 / ROUTING</span>
+        <h3>Automatic and <em>honest</em></h3>
+        <p>Reads your location, finds the nearest source-backed destination,
+           and shows both objectives side by side.</p>
+      </div>
+      <div class="feature-row">
+        <span class="idx">04 / ASSISTANT</span>
+        <h3>Offline survival <em>LLM</em></h3>
+        <p>A local language model that answers first-aid, water, shelter, and
+           fire questions on-device. No internet required once installed.</p>
+      </div>
+      <div class="feature-row">
+        <span class="idx">05 / PRIVACY</span>
+        <h3>Stays on <em>your machine</em></h3>
+        <p>Location and accounts live in a local SQLite file. No third-party
+           trackers. No cloud sync. No analytics.</p>
+      </div>
+      <div class="feature-row">
+        <span class="idx">06 / SOURCE</span>
+        <h3>Fully <em>auditable</em></h3>
+        <p>Every source has a URL, a hash, a licence, and a processing log.
+           The pipeline preserves original bytes.</p>
+      </div>
+    </div>
   </div>
 </section>
 
-<section class="how wrap">
-  <div>
-    <div class="eyebrow">A CLEARER PATH, STEP BY STEP</div>
-    <h2 style="margin:20px 0 24px">Understand first.<br>Navigate with context.</h2>
-    <a class="text-link" href="/methodology">Read our methodology →</a>
-  </div>
-  <div class="steps">
-    <article><span>01</span><div>
-      <h3>Understand the risk</h3>
-      <p>Explore public hazard layers and see where evidence is missing.</p>
-    </div></article>
-    <article><span>02</span><div>
-      <h3>Evaluate the routes</h3>
-      <p>Compare shortest distance with a transparent risk-weighted model.</p>
-    </div></article>
-    <article><span>03</span><div>
-      <h3>Find a lower-risk path</h3>
-      <p>Read the evidence behind the result, with every assumption visible.</p>
-    </div></article>
+<section class="cta">
+  <div class="cta-inner">
+    <div class="eyebrow">The premise</div>
+    <h2>The shortest route<br>isn't always <em>the safest.</em></h2>
+    <p>WAYOUT compares distance and risk on the same graph, with the same
+       endpoints, and shows every assumption in the open.</p>
+    <a href="/map" class="btn-hero primary" style="background:var(--cream);color:var(--ink)">Open the live map <span>↗</span></a>
   </div>
 </section>
-</main>
 
 <footer>
-  <div>
-    <b>WAYOUT</b>
-    <span>Safer Routes. Brighter Tomorrows.</span>
+  <div class="footer-top">
+    <div>
+      <h4>WAYOUT</h4>
+      <p>An educational disaster-readiness tool built with Python, MySQL,
+         Flask and MapLibre. Data from NASA, USGS, GDACS, ThinkHazard!,
+         and OpenStreetMap.</p>
+      <p style="font-size:11px;opacity:.7">Follow official emergency
+         instructions during an actual event.</p>
+    </div>
+    <div>
+      <h4>Explore</h4>
+      <ul>
+        <li><a href="/map">Live map</a></li>
+        <li><a href="/dashboard">Overview</a></li>
+        <li><a href="/shelters">Destinations</a></li>
+        <li><a href="/methodology">Methodology</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Data</h4>
+      <ul>
+        <li><a href="/data">Source register</a></li>
+        <li><a href="/historical">Historical events</a></li>
+        <li><a href="/admin">Simulation lab</a></li>
+        <li><a href="https://www.gdacs.org" target="_blank" rel="noopener">GDACS</a></li>
+      </ul>
+    </div>
   </div>
-  <p>{{disclaimer}}</p>
-  <div class="footer-links">
-    <a href="/historical">Historical events</a>
-    <a href="/admin">Simulation lab</a>
-    <a href="/methodology">About this project</a>
-    <span>CBSE Computer Science · Python + MySQL</span>
+  <div class="footer-bottom">
+    <span>© WAYOUT — Safer routes. Brighter tomorrows.</span>
+    <span class="mono">CBSE CS · Python · MySQL · MapLibre</span>
   </div>
 </footer>
 
-<script src="{{url_for('static',filename='vendor/leaflet.js')}}"></script>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script>
 (function(){
-  const map = L.map('hero-map', {
-    zoomControl:false, scrollWheelZoom:false, dragging:false,
-    doubleClickZoom:false, boxZoom:false, touchZoom:false, keyboard:false,
-  }).setView([10.0614, 76.32631], 11);
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const nav = $('nav');
 
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-    subdomains:'abcd', maxZoom:19,
-    attribution:'&copy; OpenStreetMap contributors &copy; CARTO'
-  }).addTo(map);
+  /* ============ CINEMATIC AUTO-TOUR ============ */
+  const TOUR = [
+    { center: [-4.5, 57.5],   zoom: 7,  pitch: 60, bearing: 20,  label: 'Scottish Highlands' },
+    { center: [85.32, 27.70], zoom: 10, pitch: 60, bearing: -15, label: 'Kathmandu Valley' },
+    { center: [76.32, 10.06], zoom: 11, pitch: 55, bearing: 15,  label: 'Kerala Backwaters' },
+    { center: [139.81, 35.70], zoom: 12, pitch: 62, bearing: -25, label: 'Eastern Tokyo' },
+  ];
 
-  L.circle([10.0614, 76.32631], {
-    radius: 15000, color:'#16352f', weight:1, dashArray:'5 7',
-    fillColor:'#d6c7a1', fillOpacity:.12
-  }).addTo(map);
+  let hero;
+  try {
+    hero = new maplibregl.Map({
+      container: 'hero-map',
+      style: 'https://tiles.openfreemap.org/styles/liberty',
+      center: TOUR[0].center,
+      zoom: TOUR[0].zoom,
+      pitch: TOUR[0].pitch,
+      bearing: TOUR[0].bearing,
+      maxPitch: 80,
+      antialias: true,
+      interactive: true,
+      scrollZoom: false,
+      dragRotate: true,
+      touchZoomRotate: false,
+      touchPitch: false,
+      attributionControl: false,
+      renderWorldCopies: false,
+      fadeDuration: 400,
+    });
+  } catch(e){ console.warn('hero map failed:', e); return; }
 
-  fetch('/api/roads?region=kochi&bounds=76.20,9.95,76.45,10.15')
-    .then(r => r.json())
-    .then(d => {
-      L.geoJSON(d, { style:{ color:'#7d907d', weight:.8, opacity:.6 } }).addTo(map);
-    })
-    .catch(() => {});
+  let tourActive = true;
+  let tourIdx = 0;
+  let tourTimer = null;
+
+  hero.on('load', () => {
+    try {
+      hero.addSource('terrain', {
+        type: 'raster-dem',
+        tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+        encoding: 'terrarium', tileSize: 256, maxzoom: 15
+      });
+      hero.setTerrain({ source: 'terrain', exaggeration: 1.6 });
+      hero.addLayer({
+        id: 'hillshade', type: 'hillshade', source: 'terrain',
+        paint: {
+          'hillshade-shadow-color': '#0a1f1a',
+          'hillshade-highlight-color': '#f0e5c8',
+          'hillshade-accent-color': '#6d8a76',
+          'hillshade-exaggeration': 0.65
+        }
+      });
+      hero.addLayer({
+        id: 'sky', type: 'sky',
+        paint: {
+          'sky-type': 'atmosphere',
+          'sky-atmosphere-sun': [0.0, 90.0],
+          'sky-atmosphere-sun-intensity': 14
+        }
+      });
+    } catch(e){ console.warn('hero layers:', e); }
+    startTour();
+  });
+
+  ['mousedown','touchstart','wheel'].forEach(ev =>
+    hero.on(ev, () => { tourActive = false; }));
+
+  function startTour() {
+    if (!tourActive) return;
+    const stage = $('tour-stage');
+    const stop = TOUR[tourIdx];
+    if (stage) stage.textContent = stop.label;
+    hero.flyTo({
+      center: stop.center,
+      zoom: stop.zoom,
+      pitch: stop.pitch,
+      bearing: stop.bearing,
+      duration: 3800,
+      curve: 1.7,
+      essential: true
+    });
+    clearTimeout(tourTimer);
+    tourTimer = setTimeout(() => {
+      tourIdx = (tourIdx + 1) % TOUR.length;
+      startTour();
+    }, 9000);
+  }
+
+  /* ============ NAV LIGHT/DARK ============ */
+  window.addEventListener('scroll', () => {
+    const y = window.scrollY;
+    const vh = window.innerHeight;
+    if (y < vh * 0.6) {
+      nav.classList.remove('light');
+    } else {
+      nav.classList.add('light');
+    }
+  }, { passive: true });
 })();
 </script>
 </body></html>
